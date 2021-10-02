@@ -22,8 +22,8 @@ namespace PascalCompiler
         public enum TokenType
         {
             // OperationToken
-            LeftBracketToken,
-            RightBracketToken,
+            LeftRoundBracketToken,
+            RightRoundBracketToken,
             PlusToken,
             MinusToken,
             MultToken,
@@ -35,6 +35,16 @@ namespace PascalCompiler
             EqualToken,
             NotEqualToken,
 
+            SemicolonToken,
+            ColonToken,
+            AssignmentToken,
+            LeftSquareBracketToken,
+            RightSquareBracketToken,
+            LeftCurlyBracketToken,
+            RightCurlyBracketToken,
+            ModToken,
+
+
             // ConstToken
             IntToken,
             FloatToken,
@@ -42,12 +52,6 @@ namespace PascalCompiler
 
             // VarToken
             VarToken,
-
-            // Keywords
-            SemicolonToken,
-            ColonToken,
-            AssignmentToken,
-
             BadToken
         }
 
@@ -64,7 +68,7 @@ namespace PascalCompiler
             if (CurrentStr == null)
                 return null;
 
-            while (Ch == ' ') NextChar();
+            while (Ch == ' ') GetNextChar();
 
             // Идентификатор
             // Сканируем идент. или ключевое слово
@@ -78,7 +82,7 @@ namespace PascalCompiler
                 {
                     letterCounter++;
                     identifierName += Ch;
-                    NextChar();
+                    GetNextChar();
                 }
 
                 // TODO Развилка -> проверяем является ли текущее слово ключевым.
@@ -100,10 +104,10 @@ namespace PascalCompiler
                         num = 10 * num + digit;
                     else
                     {
-                        throw new Exception("Константа превышает допустимый предел");
                         num = 0;
+                        throw new Exception("Константа превышает допустимый предел");
                     }
-                    NextChar();
+                    GetNextChar();
                 }
                 return new SyntaxToken(TokenType.IntToken, num); // 'int num'
             }
@@ -111,67 +115,82 @@ namespace PascalCompiler
             switch (Ch)
             {
                 case '+':
-                    NextChar();
+                    GetNextChar();
                     return new SyntaxToken(TokenType.PlusToken);
                 case '-':
-                    NextChar();
+                    GetNextChar();
                     return new SyntaxToken(TokenType.MinusToken);
                 case '*':
-                    NextChar();
+                    GetNextChar();
                     return new SyntaxToken(TokenType.MultToken);
                 case '/':
-                    NextChar();
+                    GetNextChar();
                     return new SyntaxToken(TokenType.DivToken);
                 case '(':
-                    NextChar();
-                    return new SyntaxToken(TokenType.LeftBracketToken);
+                    GetNextChar();
+                    return new SyntaxToken(TokenType.LeftRoundBracketToken);
                 case ')':
-                    NextChar();
-                    return new SyntaxToken(TokenType.RightBracketToken);
+                    GetNextChar();
+                    return new SyntaxToken(TokenType.RightRoundBracketToken);
                 case '<':
-                    NextChar();
+                    GetNextChar();
                     if (Ch == '=')
                     {
-                        NextChar();
+                        GetNextChar();
                         return new SyntaxToken(TokenType.LessOrEqualToken); // '<='
                     }
                     else if (Ch == '>')
                     {
-                        NextChar();
+                        GetNextChar();
                         return new SyntaxToken(TokenType.NotEqualToken); // '<>'
                     }
                     else
                         return new SyntaxToken(TokenType.LessToken); // '<'
                 case '>':
-                    NextChar();
+                    GetNextChar();
                     if (Ch == '=')
                     {
-                        NextChar();
+                        GetNextChar();
                         return new SyntaxToken(TokenType.GreaterOrEqualToken); // '>='
                     }
                     else
                         return new SyntaxToken(TokenType.GreaterToken); // '>'
                 case '=':
-                    NextChar();
+                    GetNextChar();
                     return new SyntaxToken(TokenType.EqualToken);
                 case ':':
-                    NextChar();
+                    GetNextChar();
                     if (Ch == '=')
                     {
-                        NextChar();
+                        GetNextChar();
                         return new SyntaxToken(TokenType.AssignmentToken); // ':='
                     }
                     else
                         return new SyntaxToken(TokenType.ColonToken); // ':'
                 case ';':
-                    NextChar();
-                    return new SyntaxToken(TokenType.SemicolonToken); // ';'
+                    GetNextChar();
+                    return new SyntaxToken(TokenType.SemicolonToken); 
+                case '[':
+                    GetNextChar();
+                    return new SyntaxToken(TokenType.LeftSquareBracketToken);
+                case ']':
+                    GetNextChar();
+                    return new SyntaxToken(TokenType.RightSquareBracketToken);
+                case '{':
+                    GetNextChar();
+                    return new SyntaxToken(TokenType.LeftCurlyBracketToken);
+                case '}':
+                    GetNextChar();
+                    return new SyntaxToken(TokenType.RightCurlyBracketToken);
+                case '%':
+                    GetNextChar();
+                    return new SyntaxToken(TokenType.ModToken);
             }
 
             return null;
         }
 
-        private void NextChar()
+        private void GetNextChar()
         {
             if (CurrentCharNum == CurrentStr.Length - 1)
             {
