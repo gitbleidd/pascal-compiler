@@ -9,9 +9,14 @@ namespace PascalCompiler
             var io = new IOModule(@"C:\Users\gitbleidd\Desktop\test.pas");
             var lexer = new Lexer(io);
 
-            while(lexer.GetNextToken() != null)
+            Token.SyntaxToken token = lexer.GetNextToken();
+            while (token != null)
             {
-
+                if (token.Value != null)
+                    Console.WriteLine($"{token.Type} | Value: {token.Value}");
+                else
+                    Console.WriteLine(token.Type);
+                token = lexer.GetNextToken();
             }
         }
     }

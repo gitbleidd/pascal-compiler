@@ -19,28 +19,36 @@ namespace PascalCompiler
 
         private IOModule IO { get; }
 
-        public enum Symbols
-        {
-            LeftBracket,
-            RightBracket,
-
-            Plus,
-            Minus,
-            Mult,
-            Div,
-            
-            Greater,
-            Less,
-            GreaterOrEqual,
-            LessOrEqual,
-            Equal
-        }
-
         public enum TokenType
         {
-            ConstToken,
-            OperationToken,
-            IdentToken
+            // OperationToken
+            LeftBracketToken,
+            RightBracketToken,
+            PlusToken,
+            MinusToken,
+            MultToken,
+            DivToken,
+            GreaterToken,
+            LessToken,
+            GreaterOrEqualToken,
+            LessOrEqualToken,
+            EqualToken,
+            NotEqualToken,
+
+            // ConstToken
+            IntToken,
+            FloatToken,
+            StringToken,
+
+            // VarToken
+            VarToken,
+
+            // Keywords
+            SemicolonToken,
+            ColonToken,
+            AssignmentToken,
+
+            BadToken
         }
 
         public Lexer(IOModule IO)
@@ -51,7 +59,7 @@ namespace PascalCompiler
             Ch = CurrentStr[CurrentCharNum];
         }
 
-        public GenericToken GetNextToken()
+        public SyntaxToken GetNextToken()
         {
             if (CurrentStr == null)
                 return null;
@@ -72,14 +80,17 @@ namespace PascalCompiler
                     identifierName += Ch;
                     NextChar();
                 }
-                return new GenericToken(); // 'int num'
+
+                // TODO Развилка -> проверяем является ли текущее слово ключевым.
+
+                return new SyntaxToken(TokenType.VarToken, identifierName); // 'int num'
             }
 
             // Числовая константа
             // Сканируем целую или вещественную константу
             if (char.IsNumber(Ch))
             {
-                // int const:
+                // TODO вещественная константа
                 int maxInt = 32767;
                 int num = 0;
                 while (char.IsNumber(Ch))
@@ -94,65 +105,67 @@ namespace PascalCompiler
                     }
                     NextChar();
                 }
-                return new GenericToken(); // 'int num'
+                return new SyntaxToken(TokenType.IntToken, num); // 'int num'
             }
 
             switch (Ch)
             {
                 case '+':
                     NextChar();
-                    return new GenericToken();
+                    return new SyntaxToken(TokenType.PlusToken);
                 case '-':
                     NextChar();
-                    return new GenericToken();
+                    return new SyntaxToken(TokenType.MinusToken);
                 case '*':
                     NextChar();
-                    return new GenericToken();
+                    return new SyntaxToken(TokenType.MultToken);
                 case '/':
                     NextChar();
-                    return new GenericToken();
+                    return new SyntaxToken(TokenType.DivToken);
                 case '(':
                     NextChar();
-                    return new GenericToken();
+                    return new SyntaxToken(TokenType.LeftBracketToken);
                 case ')':
                     NextChar();
-                    return new GenericToken();
+                    return new SyntaxToken(TokenType.RightBracketToken);
                 case '<':
                     NextChar();
                     if (Ch == '=')
                     {
                         NextChar();
-                        return new GenericToken(); // '<='
+                        return new SyntaxToken(TokenType.LessOrEqualToken); // '<='
                     }
                     else if (Ch == '>')
                     {
                         NextChar();
-                        return new GenericToken(); // '<>'
+                        return new SyntaxToken(TokenType.NotEqualToken); // '<>'
                     }
                     else
-                        return new GenericToken(); // '<'
+                        return new SyntaxToken(TokenType.LessToken); // '<'
                 case '>':
                     NextChar();
                     if (Ch == '=')
                     {
                         NextChar();
-                        return new GenericToken(); // '>='
+                        return new SyntaxToken(TokenType.GreaterOrEqualToken); // '>='
                     }
                     else
-                        return new GenericToken(); // '>'
+                        return new SyntaxToken(TokenType.GreaterToken); // '>'
+                case '=':
+                    NextChar();
+                    return new SyntaxToken(TokenType.EqualToken);
                 case ':':
                     NextChar();
                     if (Ch == '=')
                     {
                         NextChar();
-                        return new GenericToken(); // ':='
+                        return new SyntaxToken(TokenType.AssignmentToken); // ':='
                     }
                     else
-                        return new GenericToken(); // ':'
+                        return new SyntaxToken(TokenType.ColonToken); // ':'
                 case ';':
                     NextChar();
-                    return new GenericToken(); // ';'
-                
+                    return new SyntaxToken(TokenType.SemicolonToken); // ';'
             }
 
             return null;
