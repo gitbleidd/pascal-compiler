@@ -6,7 +6,13 @@ namespace PascalCompiler
     {
         static void Main(string[] args)
         {
-            Console.WriteLine("Hello World!");
+            var io = new IOModule(@"C:\Users\gitbleidd\Desktop\test.pas");
+            var lexer = new Lexer(io);
+
+            while(lexer.GetNextToken() != null)
+            {
+
+            }
         }
     }
 }
