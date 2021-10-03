@@ -16,7 +16,13 @@ namespace PascalCompiler
 
         public string ReadNextLine()
         {
-            return Reader.ReadLine();
+            string currentStr = Reader.ReadLine();
+            while (currentStr != null && currentStr.Length == 0)
+                currentStr = Reader.ReadLine();
+
+            if (currentStr != null)
+                Console.WriteLine(currentStr);
+            return currentStr;
         }
 
         public void CloseIO()
