@@ -338,6 +338,18 @@ namespace PascalCompiler
                     return new SyntaxToken(TokenType.DotToken, CurrentCharNum++);
                 case '^':
                     return new SyntaxToken(TokenType.CaretToken, CurrentCharNum++);
+                case '\'':
+                    string text = "";
+                    int start = CurrentCharNum;
+                    GetNextChar();
+                    while (Ch != '\'')
+                    {
+                        text += Ch;
+                        GetNextChar();
+                    }
+                    GetNextChar();
+                    return new SyntaxToken(TokenType.StringConstToken, text, start);
+
             }
 
             return new SyntaxToken(TokenType.BadToken, CurrentCharNum++);
