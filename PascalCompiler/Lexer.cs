@@ -309,7 +309,7 @@ namespace PascalCompiler
                     }
                     else
                     {
-                        return new SyntaxToken(TokenType.LessToken, CurrentCharPosition++); // '<'
+                        return new SyntaxToken(TokenType.LessToken, CurrentCharPosition); // '<'
                     }
                 case '>':
                     Next();
@@ -319,7 +319,7 @@ namespace PascalCompiler
                     }
                     else
                     {
-                        return new SyntaxToken(TokenType.GreaterToken, CurrentCharPosition++); // '>'
+                        return new SyntaxToken(TokenType.GreaterToken, CurrentCharPosition); // '>'
                     }
                 case '=':
                     return new SyntaxToken(TokenType.EqualToken, CurrentCharPosition++);
@@ -331,7 +331,7 @@ namespace PascalCompiler
                     }
                     else
                     {
-                        return new SyntaxToken(TokenType.ColonToken, CurrentCharPosition++); // ':'
+                        return new SyntaxToken(TokenType.ColonToken, CurrentCharPosition); // ':'
                     }
                 case ';':
                     return new SyntaxToken(TokenType.SemicolonToken, CurrentCharPosition++);
