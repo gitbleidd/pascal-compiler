@@ -232,13 +232,12 @@ namespace PascalCompiler
             {
                 int start = CurrentCharNum;
 
-                // TODO вещественная константа
-                int maxInt = 32767;
+                int maxValue = 32767; // Max integer
                 int num = 0;
                 while (char.IsNumber(Ch))
                 {
                     int digit = Ch - '0';
-                    if (num < maxInt / 10 || (num == maxInt / 10 && digit <= maxInt % 10))
+                    if (num < maxValue / 10 || (num == maxValue / 10 && digit <= maxValue % 10))
                         num = 10 * num + digit;
                     else
                     {
@@ -247,7 +246,30 @@ namespace PascalCompiler
                     }
                     GetNextChar();
                 }
-                return new SyntaxToken(TokenType.IntConstToken, num, start); // 'int num'
+
+                if (Ch == '.')
+                {
+                    GetNextChar();
+                    // Обработка вещественной константы
+                    int num2 = 0;
+                    while (Ch.IsNumber())
+                    {
+                        int digit = Ch - '0';
+                        if (num2 < maxValue / 10 || (num2 == maxValue / 10 && digit <= maxValue % 10))
+                            num2 = 10 * num2 + digit;
+                        else
+                        {
+                            num2 = 0;
+                            throw new Exception("Константа превышает допустимый предел");
+                        }
+                        GetNextChar();
+                    }
+                    
+                    float realNum = float.Parse($"{num}.{num2}", System.Globalization.CultureInfo.InvariantCulture);
+                    return new SyntaxToken(TokenType.FloatConstToken, realNum, start);
+                }
+                else
+                    return new SyntaxToken(TokenType.IntConstToken, num, start);
             }
 
             switch (Ch)

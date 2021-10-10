@@ -21,7 +21,7 @@ namespace PascalCompiler
                 currentStr = Reader.ReadLine();
 
             if (currentStr != null)
-                Console.WriteLine(currentStr);
+                Console.WriteLine("\n" + currentStr);
             return currentStr;
         }
 
