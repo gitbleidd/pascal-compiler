@@ -9,7 +9,7 @@ namespace PascalCompiler
 {
     class Lexer
     {
-        private int CurrentCharNum { get; set; }
+        private int CurrentCharPosition { get; set; }
         private char Current 
         { 
             get
@@ -17,14 +17,14 @@ namespace PascalCompiler
                 if (CurrentStr == null)
                     return '\0';
 
-                if (CurrentCharNum >= CurrentStr.Length)
+                if (CurrentCharPosition >= CurrentStr.Length)
                 {
                     CurrentStr = IO.ReadNextLine();
                     if (CurrentStr == null)
                         return '\0';
-                    CurrentCharNum = 0;
+                    CurrentCharPosition = 0;
                 }
-                return CurrentStr[CurrentCharNum];
+                return CurrentStr[CurrentCharPosition];
             }
         }
 
@@ -188,29 +188,33 @@ namespace PascalCompiler
         {
             this.IO = IO;
             CurrentStr = IO.ReadNextLine();
-            CurrentCharNum = 0;
+            CurrentCharPosition = 0;
         }
 
         public SyntaxToken GetNextToken()
         {
             if (Current == '\0')
-                return new SyntaxToken(TokenType.EndOfFileToken, '\0', CurrentCharNum); //EndOfFileToken
+                return new SyntaxToken(TokenType.EndOfFileToken, '\0', CurrentCharPosition); //EndOfFileToken
 
-            while (Current == ' ') GetNextChar();
+            while (Current == ' ') Next();
 
-            // Обработка комментариев (без \}, \{ )
-            //if (Ch == '{')
-            //{
-            //    while (Ch != '\0' && Ch != '}') GetNextChar();
-            //    GetNextChar();
-            //    if (Ch == '\0') return new SyntaxToken(TokenType.EndOfFileToken, '\0', CurrentCharNum);
-            //}
+            // Обработка комментариев, без обработки экранированных скобок.
+            if (Current == '{')
+            {
+                while (Current != '}')
+                {
+                    if (Current == '\0')
+                        throw new Exception("Ошибка объявления комментария.");
+                    Next();
+                }
+                Next(); // Пропускаем '}'
+            }
 
             // Идентификатор
             // Сканируем идентификатор или ключевое слово
             if (Current.IsAsciiLetter())
             {
-                int start = CurrentCharNum;
+                int start = CurrentCharPosition;
 
                 string identifierName = "";
                 int maxIndentLen = 127;
@@ -220,7 +224,7 @@ namespace PascalCompiler
                 {
                     letterCounter++;
                     identifierName += Current;
-                    GetNextChar();
+                    Next();
                 }
 
                 // Проверяем является ли текущее слово ключевым.
@@ -237,7 +241,7 @@ namespace PascalCompiler
             // Сканируем целую или вещественную константу
             if (char.IsNumber(Current))
             {
-                int start = CurrentCharNum;
+                int start = CurrentCharPosition;
 
                 int maxValue = 32767; // Max integer
                 int num = 0;
@@ -251,12 +255,12 @@ namespace PascalCompiler
                         num = 0;
                         throw new Exception("Константа превышает допустимый предел");
                     }
-                    GetNextChar();
+                    Next();
                 }
 
                 if (Current == '.')
                 {
-                    GetNextChar();
+                    Next();
                     // Обработка вещественной константы
                     int num2 = 0;
                     while (char.IsNumber(Current))
@@ -269,7 +273,7 @@ namespace PascalCompiler
                             num2 = 0;
                             throw new Exception("Константа превышает допустимый предел");
                         }
-                        GetNextChar();
+                        Next();
                     }
                     
                     float realNum = float.Parse($"{num}.{num2}", System.Globalization.CultureInfo.InvariantCulture);
@@ -282,84 +286,87 @@ namespace PascalCompiler
             switch (Current)
             {
                 case '+':
-                    return new SyntaxToken(TokenType.PlusToken, CurrentCharNum++);
+                    return new SyntaxToken(TokenType.PlusToken, CurrentCharPosition++);
                 case '-':
-                    return new SyntaxToken(TokenType.MinusToken, CurrentCharNum++);
+                    return new SyntaxToken(TokenType.MinusToken, CurrentCharPosition++);
                 case '*':
-                    return new SyntaxToken(TokenType.MultToken, CurrentCharNum++);
+                    return new SyntaxToken(TokenType.MultToken, CurrentCharPosition++);
                 case '/':
-                    return new SyntaxToken(TokenType.DivisionToken, CurrentCharNum++);
+                    return new SyntaxToken(TokenType.DivisionToken, CurrentCharPosition++);
                 case '(':
-                    return new SyntaxToken(TokenType.LeftRoundBracketToken, CurrentCharNum++);
+                    return new SyntaxToken(TokenType.LeftRoundBracketToken, CurrentCharPosition++);
                 case ')':
-                    return new SyntaxToken(TokenType.RightRoundBracketToken, CurrentCharNum++);
+                    return new SyntaxToken(TokenType.RightRoundBracketToken, CurrentCharPosition++);
                 case '<':
-                    GetNextChar();
+                    Next();
                     if (Current == '=')
                     {
-                        return new SyntaxToken(TokenType.LessOrEqualToken, CurrentCharNum++); // '<='
+                        return new SyntaxToken(TokenType.LessOrEqualToken, CurrentCharPosition++); // '<='
                     }
                     else if (Current == '>')
                     {
-                        return new SyntaxToken(TokenType.NotEqualToken, CurrentCharNum++); // '<>'
+                        return new SyntaxToken(TokenType.NotEqualToken, CurrentCharPosition++); // '<>'
                     }
                     else
                     {
-                        return new SyntaxToken(TokenType.LessToken, CurrentCharNum++); // '<'
+                        return new SyntaxToken(TokenType.LessToken, CurrentCharPosition++); // '<'
                     }
                 case '>':
-                    GetNextChar();
+                    Next();
                     if (Current == '=')
                     {
-                        return new SyntaxToken(TokenType.GreaterOrEqualToken, CurrentCharNum++); // '>='
+                        return new SyntaxToken(TokenType.GreaterOrEqualToken, CurrentCharPosition++); // '>='
                     }
                     else
                     {
-                        return new SyntaxToken(TokenType.GreaterToken, CurrentCharNum++); // '>'
+                        return new SyntaxToken(TokenType.GreaterToken, CurrentCharPosition++); // '>'
                     }
                 case '=':
-                    return new SyntaxToken(TokenType.EqualToken, CurrentCharNum++);
+                    return new SyntaxToken(TokenType.EqualToken, CurrentCharPosition++);
                 case ':':
-                    GetNextChar();
+                    Next();
                     if (Current == '=')
                     {
-                        return new SyntaxToken(TokenType.AssignmentToken, CurrentCharNum++); // ':='
+                        return new SyntaxToken(TokenType.AssignmentToken, CurrentCharPosition++); // ':='
                     }
                     else
                     {
-                        return new SyntaxToken(TokenType.ColonToken, CurrentCharNum++); // ':'
+                        return new SyntaxToken(TokenType.ColonToken, CurrentCharPosition++); // ':'
                     }
                 case ';':
-                    return new SyntaxToken(TokenType.SemicolonToken, CurrentCharNum++);
-                //case '[':
-                //    return new SyntaxToken(TokenType.LeftSquareBracketToken, CurrentCharNum++);
-                //case ']':
-                //    return new SyntaxToken(TokenType.RightSquareBracketToken, CurrentCharNum++);
-                //case ',':
-                //    return new SyntaxToken(TokenType.CommaToken, CurrentCharNum++);
-                //case '.':
-                //    return new SyntaxToken(TokenType.DotToken, CurrentCharNum++);
-                //case '^':
-                //    return new SyntaxToken(TokenType.CaretToken, CurrentCharNum++);
+                    return new SyntaxToken(TokenType.SemicolonToken, CurrentCharPosition++);
+                case '[':
+                    return new SyntaxToken(TokenType.LeftSquareBracketToken, CurrentCharPosition++);
+                case ']':
+                    return new SyntaxToken(TokenType.RightSquareBracketToken, CurrentCharPosition++);
+                case ',':
+                    return new SyntaxToken(TokenType.CommaToken, CurrentCharPosition++);
+                case '.':
+                    return new SyntaxToken(TokenType.DotToken, CurrentCharPosition++);
+                case '^':
+                    return new SyntaxToken(TokenType.CaretToken, CurrentCharPosition++);
                 case '\'':
                     string text = "";
-                    int start = CurrentCharNum;
-                    GetNextChar();
+                    int start = CurrentCharPosition;
+                    Next();
                     while (Current != '\'')
                     {
+                        if (Current == '\0') 
+                            throw new Exception("Ошибка инициализации строковой константы");
+
                         text += Current;
-                        GetNextChar();
+                        Next();
                     }
-                    GetNextChar();
+                    Next();
                     return new SyntaxToken(TokenType.StringConstToken, text, start);
             }
 
-            return new SyntaxToken(TokenType.BadToken, CurrentCharNum++);
+            return new SyntaxToken(TokenType.BadToken, CurrentCharPosition++);
         }
 
-        private void GetNextChar()
+        private void Next()
         {
-            CurrentCharNum++;
+            CurrentCharPosition++;
         }
     }
 }
