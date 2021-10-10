@@ -2,8 +2,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 using PascalCompiler.Extensions;
 using PascalCompiler.Token;
 
@@ -12,17 +10,18 @@ namespace PascalCompiler
     class Lexer
     {
         private int CurrentCharNum { get; set; }
-        private char Ch 
+        private char Current 
         { 
             get
             {
+                if (CurrentStr == null)
+                    return '\0';
+
                 if (CurrentCharNum >= CurrentStr.Length)
                 {
                     CurrentStr = IO.ReadNextLine();
                     if (CurrentStr == null)
-                    {
                         return '\0';
-                    }
                     CurrentCharNum = 0;
                 }
                 return CurrentStr[CurrentCharNum];
@@ -194,25 +193,33 @@ namespace PascalCompiler
 
         public SyntaxToken GetNextToken()
         {
-            if (Ch == '\0')
+            if (Current == '\0')
                 return new SyntaxToken(TokenType.EndOfFileToken, '\0', CurrentCharNum); //EndOfFileToken
 
-            while (Ch == ' ') GetNextChar();
+            while (Current == ' ') GetNextChar();
+
+            // Обработка комментариев (без \}, \{ )
+            //if (Ch == '{')
+            //{
+            //    while (Ch != '\0' && Ch != '}') GetNextChar();
+            //    GetNextChar();
+            //    if (Ch == '\0') return new SyntaxToken(TokenType.EndOfFileToken, '\0', CurrentCharNum);
+            //}
 
             // Идентификатор
             // Сканируем идентификатор или ключевое слово
-            if (Ch.IsAsciiLetter())
+            if (Current.IsAsciiLetter())
             {
                 int start = CurrentCharNum;
 
                 string identifierName = "";
                 int maxIndentLen = 127;
                 int letterCounter = 0;
-                while ((Ch.IsAsciiLetter() || Ch.IsNumber())
+                while ((Current.IsAsciiLetter() || Current.IsNumber())
                     && letterCounter < maxIndentLen)
                 {
                     letterCounter++;
-                    identifierName += Ch;
+                    identifierName += Current;
                     GetNextChar();
                 }
 
@@ -228,15 +235,15 @@ namespace PascalCompiler
 
             // Числовая константа
             // Сканируем целую или вещественную константу
-            if (char.IsNumber(Ch))
+            if (char.IsNumber(Current))
             {
                 int start = CurrentCharNum;
 
                 int maxValue = 32767; // Max integer
                 int num = 0;
-                while (char.IsNumber(Ch))
+                while (char.IsNumber(Current))
                 {
-                    int digit = Ch - '0';
+                    int digit = Current - '0';
                     if (num < maxValue / 10 || (num == maxValue / 10 && digit <= maxValue % 10))
                         num = 10 * num + digit;
                     else
@@ -247,14 +254,14 @@ namespace PascalCompiler
                     GetNextChar();
                 }
 
-                if (Ch == '.')
+                if (Current == '.')
                 {
                     GetNextChar();
                     // Обработка вещественной константы
                     int num2 = 0;
-                    while (Ch.IsNumber())
+                    while (char.IsNumber(Current))
                     {
-                        int digit = Ch - '0';
+                        int digit = Current - '0';
                         if (num2 < maxValue / 10 || (num2 == maxValue / 10 && digit <= maxValue % 10))
                             num2 = 10 * num2 + digit;
                         else
@@ -272,7 +279,7 @@ namespace PascalCompiler
                     return new SyntaxToken(TokenType.IntConstToken, num, start);
             }
 
-            switch (Ch)
+            switch (Current)
             {
                 case '+':
                     return new SyntaxToken(TokenType.PlusToken, CurrentCharNum++);
@@ -288,11 +295,11 @@ namespace PascalCompiler
                     return new SyntaxToken(TokenType.RightRoundBracketToken, CurrentCharNum++);
                 case '<':
                     GetNextChar();
-                    if (Ch == '=')
+                    if (Current == '=')
                     {
                         return new SyntaxToken(TokenType.LessOrEqualToken, CurrentCharNum++); // '<='
                     }
-                    else if (Ch == '>')
+                    else if (Current == '>')
                     {
                         return new SyntaxToken(TokenType.NotEqualToken, CurrentCharNum++); // '<>'
                     }
@@ -302,7 +309,7 @@ namespace PascalCompiler
                     }
                 case '>':
                     GetNextChar();
-                    if (Ch == '=')
+                    if (Current == '=')
                     {
                         return new SyntaxToken(TokenType.GreaterOrEqualToken, CurrentCharNum++); // '>='
                     }
@@ -314,7 +321,7 @@ namespace PascalCompiler
                     return new SyntaxToken(TokenType.EqualToken, CurrentCharNum++);
                 case ':':
                     GetNextChar();
-                    if (Ch == '=')
+                    if (Current == '=')
                     {
                         return new SyntaxToken(TokenType.AssignmentToken, CurrentCharNum++); // ':='
                     }
@@ -324,32 +331,27 @@ namespace PascalCompiler
                     }
                 case ';':
                     return new SyntaxToken(TokenType.SemicolonToken, CurrentCharNum++);
-                case '[':
-                    return new SyntaxToken(TokenType.LeftSquareBracketToken, CurrentCharNum++);
-                case ']':
-                    return new SyntaxToken(TokenType.RightSquareBracketToken, CurrentCharNum++);
-                case '{':
-                    return new SyntaxToken(TokenType.LeftCurlyBracketToken, CurrentCharNum++);
-                case '}':
-                    return new SyntaxToken(TokenType.RightCurlyBracketToken, CurrentCharNum++);
-                case ',':
-                    return new SyntaxToken(TokenType.CommaToken, CurrentCharNum++);
-                case '.':
-                    return new SyntaxToken(TokenType.DotToken, CurrentCharNum++);
-                case '^':
-                    return new SyntaxToken(TokenType.CaretToken, CurrentCharNum++);
+                //case '[':
+                //    return new SyntaxToken(TokenType.LeftSquareBracketToken, CurrentCharNum++);
+                //case ']':
+                //    return new SyntaxToken(TokenType.RightSquareBracketToken, CurrentCharNum++);
+                //case ',':
+                //    return new SyntaxToken(TokenType.CommaToken, CurrentCharNum++);
+                //case '.':
+                //    return new SyntaxToken(TokenType.DotToken, CurrentCharNum++);
+                //case '^':
+                //    return new SyntaxToken(TokenType.CaretToken, CurrentCharNum++);
                 case '\'':
                     string text = "";
                     int start = CurrentCharNum;
                     GetNextChar();
-                    while (Ch != '\'')
+                    while (Current != '\'')
                     {
-                        text += Ch;
+                        text += Current;
                         GetNextChar();
                     }
                     GetNextChar();
                     return new SyntaxToken(TokenType.StringConstToken, text, start);
-
             }
 
             return new SyntaxToken(TokenType.BadToken, CurrentCharNum++);
