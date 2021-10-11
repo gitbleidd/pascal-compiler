@@ -1,54 +1,36 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.IO;
+using PascalCompiler.Text;
 
 namespace PascalCompiler
 {
+
     class IOModule
     {
-        private StreamReader Reader { get; set; }
-
-        private string[] _textLines;
+        public readonly SourceText sourceText;
         private int _currentLineNum;
 
         public IOModule(string filePath)
         {
-            Reader = new StreamReader(filePath);
             string text = File.ReadAllText(filePath);
-            _textLines = text.Split("\r\n");
+            sourceText = new SourceText(text);
             _currentLineNum = 0;
         }
 
-        public string ReadNextLine()
+        public string GetNextLexeme()
         {
-            // Пропускаем пустые строки
-            while (_currentLineNum < _textLines.Length && _textLines[_currentLineNum].Length == 0)
+            foreach (var textLine in sourceText.Lines)
             {
-                _currentLineNum++;
-                continue;
+                string line = sourceText.TextSubstr(textLine);
+                Console.WriteLine(line);
+                //line.Split(' ', '\t')
+                //TODO разбивка строки на лексемы
+                //' ', '\t', итд
+                // Обработка комментариев
             }
-
-            // Если файл закончился
-            if (_currentLineNum == _textLines.Length)
-                return null;
-
-            Console.WriteLine("\n" + _textLines[_currentLineNum]);
-            return _textLines[_currentLineNum++];
-
-            //string currentStr = Reader.ReadLine();
-            //while (currentStr != null && currentStr.Length == 0)
-            //    currentStr = Reader.ReadLine();
-
-            //if (currentStr != null)
-            //    Console.WriteLine("\n" + currentStr);
-            //return currentStr;
-        }
-
-        public void CloseIO()
-        {
-            Reader.Close();
+            return null;
         }
     }
 }

@@ -3,33 +3,38 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using PascalCompiler.Extensions;
+using PascalCompiler.Text;
 using PascalCompiler.Token;
 
 namespace PascalCompiler
 {
     class Lexer
     {
-        private int CurrentCharPosition { get; set; }
+        private readonly SourceText _text;
+        private int _position;
         private char Current 
         { 
             get
             {
-                if (CurrentStr == null)
-                    return '\0';
-
-                if (CurrentCharPosition >= CurrentStr.Length)
+                if (_position >= _text.Length)
                 {
-                    CurrentStr = IO.ReadNextLine();
-                    if (CurrentStr == null)
-                        return '\0';
-                    CurrentCharPosition = 0;
+                    return '\0';
                 }
-                return CurrentStr[CurrentCharPosition];
+                return _text[_position];
             }
         }
 
-        private string CurrentStr { get; set; }
-        private int CurrentStrNum { get; set; }
+        private char NextChar
+        {
+            get
+            {
+                if (_position + 1 >= _text.Length)
+                {
+                    return '\0';
+                }
+                return _text[_position + 1];
+            }
+        }
 
         private IOModule IO { get; }
 
@@ -187,50 +192,180 @@ namespace PascalCompiler
         public Lexer(IOModule IO)
         {
             this.IO = IO;
-            CurrentStr = IO.ReadNextLine();
-            CurrentCharPosition = 0;
+            _text = IO.sourceText;
+            _position = 0;
+        }
+
+        private void ReadUnnecessary()
+        {
+            bool done = false;
+
+            while (!done)
+            {
+                switch (Current)
+                {
+                    case '\0':
+                        done = true;
+                        break;
+                    case '{':
+                        ReadMultilineComment();
+                        break;
+                    case '\n':case '\r':
+                        Next();
+                        break;
+                    case ' ': case '\t':
+                        ReadWhiteSpace();
+                        break;
+                    default:
+                        done = true;
+                        break;
+                }
+            }
+        }
+
+        private void ReadMultilineComment()
+        {
+            int _start = _position;
+            _position++;
+            var done = false;
+
+            while (!done)
+            {
+                if (Current == '\0')
+                {
+                    throw new Exception($"Многострочный комментарий не завершен. (Line:{_text.GetLineIndex(_start)})"); //TODO исправить
+                    done = true;
+                }
+                else if (Current == '}')
+                {
+                    done = true;
+                    _position++;
+                }
+                _position++;
+            }
+        }
+
+        private void ReadWhiteSpace()
+        {
+            var done = false;
+
+            while (!done)
+            {
+                if (Current == ' ' || Current == '\t')
+                    _position++;
+                return;
+            }
         }
 
         public SyntaxToken GetNextToken()
         {
-            if (Current == '\0')
-                return new SyntaxToken(TokenType.EndOfFileToken, '\0', CurrentCharPosition); //EndOfFileToken
+            // 1. Чтение спец. символов '\n','\r','\t' итд; комментариев (одно/много-строчных)
+            ReadUnnecessary();
 
-            while (Current == ' ') Next();
-
-            // Обработка комментариев, без обработки экранированных скобок.
-            if (Current == '{')
+            // 2. Чтение токена
+            switch (Current)
             {
-                while (Current != '}')
-                {
-                    if (Current == '\0')
-                        throw new Exception("Ошибка объявления комментария.");
+                case '\0':
+                    return new SyntaxToken(TokenType.EndOfFileToken, '\0', _position);
+                case '+':
+                    return new SyntaxToken(TokenType.PlusToken, _position++);
+                case '-':
+                    return new SyntaxToken(TokenType.MinusToken, _position++);
+                case '*':
+                    return new SyntaxToken(TokenType.MultToken, _position++);
+                case '/':
+                    return new SyntaxToken(TokenType.DivisionToken, _position++);
+                case '(':
+                    return new SyntaxToken(TokenType.LeftRoundBracketToken, _position++);
+                case ')':
+                    return new SyntaxToken(TokenType.RightRoundBracketToken, _position++);
+                case '<':
                     Next();
-                }
-                Next(); // Пропускаем '}'
+                    if (Current == '=')
+                    {
+                        return new SyntaxToken(TokenType.LessOrEqualToken, _position++); // '<='
+                    }
+                    else if (Current == '>')
+                    {
+                        return new SyntaxToken(TokenType.NotEqualToken, _position++); // '<>'
+                    }
+                    else
+                    {
+                        return new SyntaxToken(TokenType.LessToken, _position); // '<'
+                    }
+                case '>':
+                    Next();
+                    if (Current == '=')
+                    {
+                        return new SyntaxToken(TokenType.GreaterOrEqualToken, _position++); // '>='
+                    }
+                    else
+                    {
+                        return new SyntaxToken(TokenType.GreaterToken, _position); // '>'
+                    }
+                case '=':
+                    return new SyntaxToken(TokenType.EqualToken, _position++);
+                case ':':
+                    Next();
+                    if (Current == '=')
+                    {
+                        return new SyntaxToken(TokenType.AssignmentToken, _position++); // ':='
+                    }
+                    else
+                    {
+                        return new SyntaxToken(TokenType.ColonToken, _position); // ':'
+                    }
+                case ';':
+                    return new SyntaxToken(TokenType.SemicolonToken, _position++);
+                case '[':
+                    return new SyntaxToken(TokenType.LeftSquareBracketToken, _position++);
+                case ']':
+                    return new SyntaxToken(TokenType.RightSquareBracketToken, _position++);
+                case ',':
+                    return new SyntaxToken(TokenType.CommaToken, _position++);
+                case '.':
+                    return new SyntaxToken(TokenType.DotToken, _position++);
+                case '^':
+                    return new SyntaxToken(TokenType.CaretToken, _position++);
+                case '\'':
+                    var sb = new StringBuilder();
+                    int start = _position;
+                    Next();
+                    while (Current != '\'')
+                    {
+                        if (Current == '\0' || Current == '\n' || Current == '\r') 
+                            throw new Exception($"Ошибка инициализации строковой константы (Line:{_text.GetLineIndex(_position)})");
+
+                        sb.Append(Current);
+                        Next();
+                    }
+                    Next();
+                    return new SyntaxToken(TokenType.StringConstToken, sb.ToString(), start);
+                case ' ':
+                    return new SyntaxToken(TokenType.BadToken, _position++); // TODO SpaceToken
             }
 
             // Идентификатор
             // Сканируем идентификатор или ключевое слово
             if (Current.IsAsciiLetter())
             {
-                int start = CurrentCharPosition;
-
-                string identifierName = "";
-                int maxIndentLen = 127;
-                int letterCounter = 0;
+                int start = _position;
+                
+                int maxlength = 127;
+                int length = 0;
                 while ((Current.IsAsciiLetter() || Current.IsNumber())
-                    && letterCounter < maxIndentLen)
+                    && length < maxlength)
                 {
-                    letterCounter++;
-                    identifierName += Current;
+                    length++;
+                    //identifierName += Current;
                     Next();
                 }
+                string identifierName = _text.TextSubstr(start, length);
 
-                // Проверяем является ли текущее слово ключевым.
+                // Проверка на ключевое слово
                 if (KeyWords.TryGetValue(identifierName.ToLower(), out int wordNum))
                 {
-                    return new SyntaxToken((TokenType) wordNum, identifierName, start);
+                    return new SyntaxToken((TokenType)wordNum, identifierName, start);
                 }
 
                 // Идентификатор
@@ -241,132 +376,55 @@ namespace PascalCompiler
             // Сканируем целую или вещественную константу
             if (char.IsNumber(Current))
             {
-                int start = CurrentCharPosition;
+                int start = _position;
+                int intgerLen = ReadNumLength();
 
-                int maxValue = 32767; // Max integer
-                int num = 0;
-                while (char.IsNumber(Current))
-                {
-                    int digit = Current - '0';
-                    if (num < maxValue / 10 || (num == maxValue / 10 && digit <= maxValue % 10))
-                        num = 10 * num + digit;
-                    else
-                    {
-                        num = 0;
-                        throw new Exception("Константа превышает допустимый предел");
-                    }
-                    Next();
-                }
-
+                // Float part
                 if (Current == '.')
                 {
                     Next();
-                    // Обработка вещественной константы
-                    int num2 = 0;
-                    while (char.IsNumber(Current))
+                    int realLen = intgerLen + 1 + ReadNumLength();
+                    try
                     {
-                        int digit = Current - '0';
-                        if (num2 < maxValue / 10 || (num2 == maxValue / 10 && digit <= maxValue % 10))
-                            num2 = 10 * num2 + digit;
-                        else
-                        {
-                            num2 = 0;
-                            throw new Exception("Константа превышает допустимый предел");
-                        }
-                        Next();
+                        float realNum = float.Parse(_text.TextSubstr(start, realLen), System.Globalization.CultureInfo.InvariantCulture);
+                        return new SyntaxToken(TokenType.FloatConstToken, realNum, start);
+
                     }
-                    
-                    float realNum = float.Parse($"{num}.{num2}", System.Globalization.CultureInfo.InvariantCulture);
-                    return new SyntaxToken(TokenType.FloatConstToken, realNum, start);
+                    catch (Exception e)
+                    {
+                        Console.WriteLine(e.Message);
+                    }
                 }
-                else
-                    return new SyntaxToken(TokenType.IntConstToken, num, start);
+
+                // Integer part
+                try
+                {
+                    int intNum = int.Parse(_text.TextSubstr(start, intgerLen));
+                    return new SyntaxToken(TokenType.IntConstToken, intNum, start);
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e.Message);
+                }
             }
 
-            switch (Current)
+            return new SyntaxToken(TokenType.BadToken, _position++);
+        }
+
+        private int ReadNumLength()
+        {
+            int length = 0;
+            while (char.IsNumber(Current))
             {
-                case '+':
-                    return new SyntaxToken(TokenType.PlusToken, CurrentCharPosition++);
-                case '-':
-                    return new SyntaxToken(TokenType.MinusToken, CurrentCharPosition++);
-                case '*':
-                    return new SyntaxToken(TokenType.MultToken, CurrentCharPosition++);
-                case '/':
-                    return new SyntaxToken(TokenType.DivisionToken, CurrentCharPosition++);
-                case '(':
-                    return new SyntaxToken(TokenType.LeftRoundBracketToken, CurrentCharPosition++);
-                case ')':
-                    return new SyntaxToken(TokenType.RightRoundBracketToken, CurrentCharPosition++);
-                case '<':
-                    Next();
-                    if (Current == '=')
-                    {
-                        return new SyntaxToken(TokenType.LessOrEqualToken, CurrentCharPosition++); // '<='
-                    }
-                    else if (Current == '>')
-                    {
-                        return new SyntaxToken(TokenType.NotEqualToken, CurrentCharPosition++); // '<>'
-                    }
-                    else
-                    {
-                        return new SyntaxToken(TokenType.LessToken, CurrentCharPosition); // '<'
-                    }
-                case '>':
-                    Next();
-                    if (Current == '=')
-                    {
-                        return new SyntaxToken(TokenType.GreaterOrEqualToken, CurrentCharPosition++); // '>='
-                    }
-                    else
-                    {
-                        return new SyntaxToken(TokenType.GreaterToken, CurrentCharPosition); // '>'
-                    }
-                case '=':
-                    return new SyntaxToken(TokenType.EqualToken, CurrentCharPosition++);
-                case ':':
-                    Next();
-                    if (Current == '=')
-                    {
-                        return new SyntaxToken(TokenType.AssignmentToken, CurrentCharPosition++); // ':='
-                    }
-                    else
-                    {
-                        return new SyntaxToken(TokenType.ColonToken, CurrentCharPosition); // ':'
-                    }
-                case ';':
-                    return new SyntaxToken(TokenType.SemicolonToken, CurrentCharPosition++);
-                case '[':
-                    return new SyntaxToken(TokenType.LeftSquareBracketToken, CurrentCharPosition++);
-                case ']':
-                    return new SyntaxToken(TokenType.RightSquareBracketToken, CurrentCharPosition++);
-                case ',':
-                    return new SyntaxToken(TokenType.CommaToken, CurrentCharPosition++);
-                case '.':
-                    return new SyntaxToken(TokenType.DotToken, CurrentCharPosition++);
-                case '^':
-                    return new SyntaxToken(TokenType.CaretToken, CurrentCharPosition++);
-                case '\'':
-                    string text = "";
-                    int start = CurrentCharPosition;
-                    Next();
-                    while (Current != '\'')
-                    {
-                        if (Current == '\0') 
-                            throw new Exception("Ошибка инициализации строковой константы");
-
-                        text += Current;
-                        Next();
-                    }
-                    Next();
-                    return new SyntaxToken(TokenType.StringConstToken, text, start);
+                length++;
+                Next();
             }
-
-            return new SyntaxToken(TokenType.BadToken, CurrentCharPosition++);
+            return length;
         }
 
         private void Next()
         {
-            CurrentCharPosition++;
+            _position++;
         }
     }
 }
