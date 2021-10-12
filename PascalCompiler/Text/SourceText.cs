@@ -72,7 +72,6 @@ namespace PascalCompiler.Text
 
         public int GetLineIndex(int position)
         {
-            //TODO подправить подсчет строки по позиции.
             var left = 0;
             var right = Lines.Count - 1;
 

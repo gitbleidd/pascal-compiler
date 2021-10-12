@@ -38,101 +38,6 @@ namespace PascalCompiler
 
         private IOModule IO { get; }
 
-        public enum TokenType
-        {
-            // OperationToken
-            LeftRoundBracketToken,
-            RightRoundBracketToken,
-            PlusToken,
-            MinusToken,
-            MultToken,
-            DivisionToken,
-            GreaterToken,
-            LessToken,
-            GreaterOrEqualToken,
-            LessOrEqualToken,
-            EqualToken,
-            NotEqualToken,
-
-            SemicolonToken,
-            ColonToken,
-            AssignmentToken,
-            LeftSquareBracketToken,
-            RightSquareBracketToken,
-            LeftCurlyBracketToken,
-            RightCurlyBracketToken,
-
-            // ConstToken
-            IntConstToken,
-            FloatConstToken,
-            StringConstToken,
-
-            // VarToken
-            IdentifierToken,
-            BadToken,
-            CommaToken,
-            DotToken,
-            CaretToken,
-
-            EndOfFileToken,
-            SpaceToken,
-
-            // ReversedWords
-            AbsoluteToken = 100,
-            AndToken,
-            ArrayToken,
-            AsmToken,
-            BeginToken,
-            CaseToken,
-            ConstToken,
-            ConstructorToken,
-            DestructorToken,
-            DivToken,
-            DoToken,
-            DowntoToken,
-            ElseToken,
-            EndToken,
-            FileToken,
-            ForToken,
-            FunctionToken,
-            GotoToken,
-            IfToken,
-            ImplementationToken,
-            InToken,
-            InheritedToken,
-            InlineToken,
-            InterfaceToken,
-            LabelToken,
-            ModToken,
-            NilToken,
-            NotToken,
-            ObjectToken,
-            OfToken,
-            OperatorToken,
-            OrToken,
-            PackedToken,
-            ProcedureToken,
-            ProgramToken,
-            RecordToken,
-            ReintroduceToken,
-            RepeatToken,
-            SelfToken,
-            SetToken,
-            ShlToken,
-            ShrToken,
-            StringToken,
-            ThenToken,
-            ToToken,
-            TypeToken,
-            UnitToken,
-            UntilToken,
-            UsesToken,
-            VarToken,
-            WhileToken,
-            WithToken,
-            XorToken
-        }
-
         public Dictionary<string, int> KeyWords { get; private set; } = new Dictionary<string, int>()
         {
             {"absolute", 100},
@@ -343,6 +248,7 @@ namespace PascalCompiler
                     Next();
                     return new SyntaxToken(TokenType.StringConstToken, sb.ToString(), start);
                 case ' ':
+                case '\t':
                     return new SyntaxToken(TokenType.SpaceToken, _position++);
             }
 
@@ -376,13 +282,33 @@ namespace PascalCompiler
             if (char.IsNumber(Current))
             {
                 int start = _position;
-                int intgerLen = ReadNumLength();
+                while (char.IsDigit(Current))
+                    _position++;
+                int intgerLen = _position - start;
 
-                // Float part
+                // Float const
                 if (Current == '.')
                 {
-                    Next();
-                    int realLen = intgerLen + 1 + ReadNumLength();
+                    int startReal = _position;
+                    _position++;
+                    while (char.IsDigit(Current))
+                        _position++;
+
+                    // Scale factor
+                    if (Current == 'e' || Current == 'E')
+                    {
+                        _position++;
+                        if (!(Current == '-' || Current == '+'))
+                        {
+                            throw new Exception($"Ошибка инициализации вещественной константы (Line:{_text.GetLineIndex(_position) + 1})");
+                        }
+                        _position++;
+                    }
+
+                    while (char.IsDigit(Current))
+                        _position++;
+
+                    int realLen = intgerLen + _position - startReal;
                     try
                     {
                         float realNum = float.Parse(_text.TextSubstr(start, realLen), System.Globalization.CultureInfo.InvariantCulture);
@@ -395,7 +321,7 @@ namespace PascalCompiler
                     }
                 }
 
-                // Integer part
+                // Integer const
                 try
                 {
                     int intNum = int.Parse(_text.TextSubstr(start, intgerLen));
@@ -408,17 +334,6 @@ namespace PascalCompiler
             }
 
             return new SyntaxToken(TokenType.BadToken, _position++);
-        }
-
-        private int ReadNumLength()
-        {
-            int length = 0;
-            while (char.IsNumber(Current))
-            {
-                length++;
-                Next();
-            }
-            return length;
         }
 
         private void Next()

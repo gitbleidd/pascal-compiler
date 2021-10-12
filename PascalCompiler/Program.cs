@@ -10,7 +10,7 @@ namespace PascalCompiler
             var lexer = new Lexer(io);
 
             Token.SyntaxToken token = lexer.GetNextToken();
-            while (token.Type != Lexer.TokenType.EndOfFileToken)
+            while (token.Type != TokenType.EndOfFileToken)
             {
                 if (token.Value != null)
                     Console.WriteLine($"{token.Type} | Value: {token.Value}");
