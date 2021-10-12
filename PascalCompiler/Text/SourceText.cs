@@ -73,12 +73,12 @@ namespace PascalCompiler.Text
         public int GetLineIndex(int position)
         {
             //TODO подправить подсчет строки по позиции.
-            var lower = 0;
-            var upper = Lines.Count - 1;
+            var left = 0;
+            var right = Lines.Count - 1;
 
-            while (lower <= upper)
+            while (left <= right)
             {
-                var index = lower + (upper - lower) / 2;
+                var index = (right + left) / 2;
                 var start = Lines[index].Start;
 
                 if (position == start)
@@ -86,15 +86,15 @@ namespace PascalCompiler.Text
 
                 if (start > position)
                 {
-                    upper = index - 1;
+                    right = index - 1;
                 }
                 else
                 {
-                    lower = index + 1;
+                    left = index + 1;
                 }
             }
 
-            return lower - 1;
+            return left - 1;
         }
 
         public string TextSubstr(TextLine textLine) => _text.Substring(textLine.Start, textLine.Length);

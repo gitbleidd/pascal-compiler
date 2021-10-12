@@ -75,6 +75,7 @@ namespace PascalCompiler
             CaretToken,
 
             EndOfFileToken,
+            SpaceToken,
 
             // ReversedWords
             AbsoluteToken = 100,
@@ -233,7 +234,7 @@ namespace PascalCompiler
             {
                 if (Current == '\0')
                 {
-                    throw new Exception($"Многострочный комментарий не завершен. (Line:{_text.GetLineIndex(_start)})"); //TODO исправить
+                    throw new Exception($"Многострочный комментарий не завершен. (Line:{_text.GetLineIndex(_start) + 1})");
                     done = true;
                 }
                 else if (Current == '}')
@@ -334,7 +335,7 @@ namespace PascalCompiler
                     while (Current != '\'')
                     {
                         if (Current == '\0' || Current == '\n' || Current == '\r') 
-                            throw new Exception($"Ошибка инициализации строковой константы (Line:{_text.GetLineIndex(_position)})");
+                            throw new Exception($"Ошибка инициализации строковой константы (Line:{_text.GetLineIndex(_position) + 1})");
 
                         sb.Append(Current);
                         Next();
@@ -342,10 +343,9 @@ namespace PascalCompiler
                     Next();
                     return new SyntaxToken(TokenType.StringConstToken, sb.ToString(), start);
                 case ' ':
-                    return new SyntaxToken(TokenType.BadToken, _position++); // TODO SpaceToken
+                    return new SyntaxToken(TokenType.SpaceToken, _position++);
             }
 
-            // Идентификатор
             // Сканируем идентификатор или ключевое слово
             if (Current.IsAsciiLetter())
             {
@@ -372,7 +372,6 @@ namespace PascalCompiler
                 return new SyntaxToken(TokenType.IdentifierToken, identifierName, start);
             }
 
-            // Числовая константа
             // Сканируем целую или вещественную константу
             if (char.IsNumber(Current))
             {
