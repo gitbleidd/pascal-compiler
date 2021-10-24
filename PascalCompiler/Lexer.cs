@@ -123,16 +123,18 @@ namespace PascalCompiler
 
             while (!done)
             {
-                if (Current == '\0')
+                if (Current == '\0' || Current == '{')
                 {
-                    throw new Exception($"Многострочный комментарий не завершен. (Line:{_text.GetLineIndex(_start) + 1})");
+                    //TODO+ ошибка комментария
+                    _io.AddError(_start, CompilerError.CommentWithoutEnd);
                     done = true;
                 }
                 else if (Current == '}')
                 {
                     done = true;
-                    _position++;
+                    //_position++;
                 }
+
                 _position++;
             }
         }
@@ -233,8 +235,9 @@ namespace PascalCompiler
                     {
                         if (Current == '\0' || Current == '\n' || Current == '\r')
                         {
-                            //TODO ошибка строка не закрыта
-                            Console.WriteLine($"Ошибка инициализации строковой константы (Line:{_text.GetLineIndex(start) + 1})");
+                            //TODO+ ошибка строка не закрыта
+                            _io.AddError(start, CompilerError.StringExceedsLine);
+                            //Console.WriteLine($"Ошибка инициализации строковой константы (Line:{_text.GetLineIndex(start) + 1})");
                             return new SyntaxToken(TokenType.BadToken, start);
                         }
 
@@ -293,8 +296,9 @@ namespace PascalCompiler
 
                     if (_position - (startReal + 1) == 0)
                     {
-                        //TODO ошибка инициализации вещ. константы
-                        Console.WriteLine($"Ошибка инициализации вещественной константы (Line:{_text.GetLineIndex(_position) + 1})");
+                        //TODO+ ошибка инициализации вещ. константы
+                        _io.AddError(start, CompilerError.ConstError);
+                        //Console.WriteLine($"Ошибка инициализации вещественной константы (Line:{_text.GetLineIndex(_position) + 1})");
                         return new SyntaxToken(TokenType.BadToken, _position++);
                     }
 
@@ -304,8 +308,9 @@ namespace PascalCompiler
                         _position++;
                         if (!(Current == '-' || Current == '+' || char.IsDigit(Current)))
                         {
-                            //TODO ошибка инициализации вещ. константы
-                            Console.WriteLine($"Ошибка инициализации вещественной константы (Line:{_text.GetLineIndex(_position) + 1})");
+                            //TODO+ ошибка инициализации вещ. константы
+                            _io.AddError(start, CompilerError.ConstError);
+                            //Console.WriteLine($"Ошибка инициализации вещественной константы (Line:{_text.GetLineIndex(_position) + 1})");
                             return new SyntaxToken(TokenType.BadToken, _position++);
                         }
                         _position++;
@@ -320,9 +325,16 @@ namespace PascalCompiler
                 {
                     int startReal = _position;
                     _position++;
-                    
+
+                    if (!char.IsDigit(Current))
+                    {
+                        _io.AddError(startReal, CompilerError.ConstError);
+                        return new SyntaxToken(TokenType.BadToken, startReal);
+                    }
+
                     while (char.IsDigit(Current)) // Считываем порядок
                         _position++;
+                    
                     realLen = integerLen + (_position - startReal);
                 }
 
@@ -337,8 +349,10 @@ namespace PascalCompiler
                     }
                     catch (Exception e)
                     {
-                        //TODO ошибка float константа превысила допустимый предел
-                        Console.WriteLine($"{e.Message} (Line:{_text.GetLineIndex(_position) + 1})");
+                        //TODO+ ошибка float константа превысила допустимый предел
+                        _io.AddError(start, CompilerError.OverflowException);
+                        return new SyntaxToken(TokenType.BadToken, _position);
+                        //Console.WriteLine($"{e.Message} (Line:{_text.GetLineIndex(_position) + 1})");
                     }
                 }
 
@@ -350,11 +364,14 @@ namespace PascalCompiler
                 }
                 catch (Exception e)
                 {
-                    //TODO ошибка int константа превысила допустимый предел
-                    Console.WriteLine($"{e.Message} (Line:{_text.GetLineIndex(_position) + 1})");
+                    //TODO+ ошибка int константа превысила допустимый предел
+                    _io.AddError(start, CompilerError.OverflowException);
+                    return new SyntaxToken(TokenType.BadToken, _position);
+                    //Console.WriteLine($"{e.Message} (Line:{_text.GetLineIndex(_position) + 1})");
                 }
             }
 
+            _io.AddError(_position, CompilerError.LexicalError);
             return new SyntaxToken(TokenType.BadToken, _position++);
         }
 

@@ -25,6 +25,9 @@ namespace PascalCompiler
 
                 Console.ForegroundColor = ConsoleColor.White;
             }
+
+            Console.WriteLine("\n\n\n\n\n");
+            io.PrintErrors(skipCleanLines: false);
         }
     }
 }
