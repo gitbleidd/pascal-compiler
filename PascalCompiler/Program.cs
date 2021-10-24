@@ -6,17 +6,24 @@ namespace PascalCompiler
     {
         static void Main(string[] args)
         {
-            var io = new IOModule(@"C:\Users\gitbleidd\Desktop\test.pas");
+            var io = new IOModule(@"C:\Users\gitbleidd\Desktop\ФГИМТ\test.pas");
             var lexer = new Lexer(io);
 
             Token.SyntaxToken token = lexer.GetNextToken();
             while (token.Type != TokenType.EndOfFileToken)
             {
+                if (token.Type == TokenType.BadToken)
+                {
+                    Console.ForegroundColor = ConsoleColor.Red;
+                }
+
                 if (token.Value != null)
                     Console.WriteLine($"{token.Type} | Value: {token.Value}");
                 else
                     Console.WriteLine(token.Type);
                 token = lexer.GetNextToken();
+
+                Console.ForegroundColor = ConsoleColor.White;
             }
         }
     }

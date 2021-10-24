@@ -36,68 +36,54 @@ namespace PascalCompiler
             }
         }
 
-        private IOModule IO { get; }
+        private IOModule _io { get; }
 
-        public Dictionary<string, int> KeyWords { get; private set; } = new Dictionary<string, int>()
+        public Dictionary<string, int> KeyWords { get; } = new Dictionary<string, int>()
         {
-            {"absolute", 100},
-            {"and", 101},
-            {"array", 102},
-            {"asm", 103},
-            {"begin", 104},
-            {"case", 105},
-            {"const", 106},
-            {"constructor", 107},
-            {"destructor", 108},
-            {"div", 109},
-            {"do", 110},
-            {"downto", 111},
-            {"else", 112},
-            {"end", 113},
-            {"file", 114},
-            {"for", 115},
-            {"function", 116},
-            {"goto", 117},
-            {"if", 118},
-            {"implementation", 119},
-            {"in", 120},
-            {"inherited", 121},
-            {"inline", 122},
-            {"interface", 123},
-            {"label", 124},
-            {"mod", 125},
-            {"nil", 126},
-            {"not", 127},
-            {"object", 128},
-            {"of", 129},
-            {"operator", 130},
-            {"or", 131},
-            {"packed", 132},
-            {"procedure", 133},
-            {"program", 134},
-            {"record", 135},
-            {"reintroduce", 136},
-            {"repeat", 137},
-            {"self", 138},
-            {"set", 139},
-            {"shl", 140},
-            {"shr", 141},
-            {"string", 142},
-            {"then", 143},
-            {"to", 144},
-            {"type", 145},
-            {"unit", 146},
-            {"until", 147},
-            {"uses", 148},
-            {"var", 149},
-            {"while", 150},
-            {"with", 151},
-            {"xor", 152}
+            {"nil", 100},
+            {"not", 101},
+            {"and", 102},
+            {"div", 103},
+
+            {"packed", 104},
+            {"array", 105},
+            {"of", 106},
+            {"file", 107},
+            {"set", 108},
+            {"record", 109},
+            {"end", 110},
+            {"case", 111},
+
+            {"or", 112},
+            {"function", 113},
+            {"var", 114},
+            {"procedure", 115},
+
+            {"begin", 116},
+            {"if", 117},
+            {"then", 118},
+            {"else", 119},
+            {"while", 120},
+            {"do", 121},
+            {"repeat", 122},
+            {"until", 123},
+            {"for", 124},
+            {"to", 125},
+            {"downto", 126},
+            {"with", 127},
+            {"goto", 128},
+
+            {"label", 129},
+            {"const", 130},
+            {"type", 131},
+            {"program", 132},
+            {"mod", 133},
+            {"in", 134}
         };
 
         public Lexer(IOModule IO)
         {
-            this.IO = IO;
+            _io = IO;
             _text = IO.sourceText;
             _position = 0;
         }
@@ -165,7 +151,7 @@ namespace PascalCompiler
 
         public SyntaxToken GetNextToken()
         {
-            // 1. Чтение спец. символов '\n','\r','\t' итд; комментариев (одно/много-строчных)
+            // 1. Чтение спец. символов '\n','\r','\t' итд, а также комментариев (одно/многострочных)
             ReadUnnecessary();
 
             // 2. Чтение токена
@@ -230,17 +216,27 @@ namespace PascalCompiler
                 case ',':
                     return new SyntaxToken(TokenType.CommaToken, _position++);
                 case '.':
-                    return new SyntaxToken(TokenType.DotToken, _position++);
-                case '^':
-                    return new SyntaxToken(TokenType.CaretToken, _position++);
+                    _position++;
+                    if (Current == '.')
+                    {
+                        return new SyntaxToken(TokenType.DoubleDotToken, _position++);
+                    }
+                    else
+                    {
+                        return new SyntaxToken(TokenType.DotToken, _position);
+                    }
                 case '\'':
                     var sb = new StringBuilder();
                     int start = _position;
                     Next();
                     while (Current != '\'')
                     {
-                        if (Current == '\0' || Current == '\n' || Current == '\r') 
-                            throw new Exception($"Ошибка инициализации строковой константы (Line:{_text.GetLineIndex(_position) + 1})");
+                        if (Current == '\0' || Current == '\n' || Current == '\r')
+                        {
+                            //TODO ошибка строка не закрыта
+                            Console.WriteLine($"Ошибка инициализации строковой константы (Line:{_text.GetLineIndex(start) + 1})");
+                            return new SyntaxToken(TokenType.BadToken, start);
+                        }
 
                         sb.Append(Current);
                         Next();
@@ -256,19 +252,17 @@ namespace PascalCompiler
             if (Current.IsAsciiLetter())
             {
                 int start = _position;
-                
-                int maxlength = 127;
                 int length = 0;
-                while ((Current.IsAsciiLetter() || Current.IsNumber())
-                    && length < maxlength)
+
+                // Макс. длина не ограничена
+                while (Current.IsAsciiLetter() || char.IsNumber(Current))
                 {
                     length++;
-                    //identifierName += Current;
                     Next();
                 }
                 string identifierName = _text.TextSubstr(start, length);
 
-                // Проверка на ключевое слово
+                // Ключевое слово
                 if (KeyWords.TryGetValue(identifierName.ToLower(), out int wordNum))
                 {
                     return new SyntaxToken((TokenType)wordNum, identifierName, start);
@@ -278,37 +272,63 @@ namespace PascalCompiler
                 return new SyntaxToken(TokenType.IdentifierToken, identifierName, start);
             }
 
-            // Сканируем целую или вещественную константу
+            // Сканируем целую или вещественную беззнаковую константу
             if (char.IsNumber(Current))
             {
                 int start = _position;
                 while (char.IsDigit(Current))
                     _position++;
-                int intgerLen = _position - start;
+                int integerLen = _position - start;
+                int realLen = -1;
 
-                // Float const
-                if (Current == '.')
+                // Read unsigned float const
+                if (Current == '.' && NextChar != '.')
                 {
+                    // Считываем вещ. конст
                     int startReal = _position;
                     _position++;
+
                     while (char.IsDigit(Current))
                         _position++;
 
-                    // Scale factor
+                    if (_position - (startReal + 1) == 0)
+                    {
+                        //TODO ошибка инициализации вещ. константы
+                        Console.WriteLine($"Ошибка инициализации вещественной константы (Line:{_text.GetLineIndex(_position) + 1})");
+                        return new SyntaxToken(TokenType.BadToken, _position++);
+                    }
+
+                    // Считываем порядок вещ. константы (Scale factor)
                     if (Current == 'e' || Current == 'E')
                     {
                         _position++;
-                        if (!(Current == '-' || Current == '+'))
+                        if (!(Current == '-' || Current == '+' || char.IsDigit(Current)))
                         {
-                            throw new Exception($"Ошибка инициализации вещественной константы (Line:{_text.GetLineIndex(_position) + 1})");
+                            //TODO ошибка инициализации вещ. константы
+                            Console.WriteLine($"Ошибка инициализации вещественной константы (Line:{_text.GetLineIndex(_position) + 1})");
+                            return new SyntaxToken(TokenType.BadToken, _position++);
                         }
                         _position++;
+
+                        while (char.IsDigit(Current))
+                            _position++;
                     }
 
-                    while (char.IsDigit(Current))
+                    realLen = integerLen + (_position - startReal);
+                }
+                else if (Current == 'e' || Current == 'E')
+                {
+                    int startReal = _position;
+                    _position++;
+                    
+                    while (char.IsDigit(Current)) // Считываем порядок
                         _position++;
+                    realLen = integerLen + (_position - startReal);
+                }
 
-                    int realLen = intgerLen + _position - startReal;
+                // Parse float const
+                if (realLen > 0 && realLen != integerLen)
+                {
                     try
                     {
                         float realNum = float.Parse(_text.TextSubstr(start, realLen), System.Globalization.CultureInfo.InvariantCulture);
@@ -317,28 +337,27 @@ namespace PascalCompiler
                     }
                     catch (Exception e)
                     {
-                        Console.WriteLine(e.Message);
+                        //TODO ошибка float константа превысила допустимый предел
+                        Console.WriteLine($"{e.Message} (Line:{_text.GetLineIndex(_position) + 1})");
                     }
                 }
 
-                // Integer const
+                // Parse unsigned integer const
                 try
                 {
-                    int intNum = int.Parse(_text.TextSubstr(start, intgerLen));
+                    int intNum = int.Parse(_text.TextSubstr(start, integerLen));
                     return new SyntaxToken(TokenType.IntConstToken, intNum, start);
                 }
                 catch (Exception e)
                 {
-                    Console.WriteLine(e.Message);
+                    //TODO ошибка int константа превысила допустимый предел
+                    Console.WriteLine($"{e.Message} (Line:{_text.GetLineIndex(_position) + 1})");
                 }
             }
 
             return new SyntaxToken(TokenType.BadToken, _position++);
         }
 
-        private void Next()
-        {
-            _position++;
-        }
+        private void Next() => _position++;
     }
 }
