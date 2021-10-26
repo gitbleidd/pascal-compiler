@@ -38,47 +38,47 @@ namespace PascalCompiler
 
         private IOModule _io { get; }
 
-        public Dictionary<string, int> KeyWords { get; } = new Dictionary<string, int>()
+        public Dictionary<string, SpecialSymbolType> KeyWords { get; } = new Dictionary<string, SpecialSymbolType>()
         {
-            {"nil", 100},
-            {"not", 101},
-            {"and", 102},
-            {"div", 103},
+            {"nil", SpecialSymbolType.NilToken},
+            {"not", SpecialSymbolType.NotToken},
+            {"and", SpecialSymbolType.AndToken},
+            {"div", SpecialSymbolType.DivToken},
 
-            {"packed", 104},
-            {"array", 105},
-            {"of", 106},
-            {"file", 107},
-            {"set", 108},
-            {"record", 109},
-            {"end", 110},
-            {"case", 111},
+            {"packed", SpecialSymbolType.PackedToken},
+            {"array", SpecialSymbolType.ArrayToken},
+            {"of", SpecialSymbolType.OfToken},
+            {"file", SpecialSymbolType.FileToken},
+            {"set", SpecialSymbolType.SetToken},
+            {"record", SpecialSymbolType.RecordToken},
+            {"end", SpecialSymbolType.EndToken},
+            {"case", SpecialSymbolType.CaseToken},
 
-            {"or", 112},
-            {"function", 113},
-            {"var", 114},
-            {"procedure", 115},
+            {"or", SpecialSymbolType.OrToken},
+            {"function", SpecialSymbolType.FunctionToken},
+            {"var", SpecialSymbolType.VarToken},
+            {"procedure", SpecialSymbolType.ProcedureToken},
 
-            {"begin", 116},
-            {"if", 117},
-            {"then", 118},
-            {"else", 119},
-            {"while", 120},
-            {"do", 121},
-            {"repeat", 122},
-            {"until", 123},
-            {"for", 124},
-            {"to", 125},
-            {"downto", 126},
-            {"with", 127},
-            {"goto", 128},
+            {"begin", SpecialSymbolType.BeginToken},
+            {"if", SpecialSymbolType.IfToken},
+            {"then", SpecialSymbolType.ThenToken},
+            {"else", SpecialSymbolType.ElseToken},
+            {"while", SpecialSymbolType.WhileToken},
+            {"do", SpecialSymbolType.DoToken},
+            {"repeat", SpecialSymbolType.RepeatToken},
+            {"until", SpecialSymbolType.UntilToken},
+            {"for", SpecialSymbolType.ForToken},
+            {"to", SpecialSymbolType.ToToken},
+            {"downto", SpecialSymbolType.DowntoToken},
+            {"with", SpecialSymbolType.WithToken},
+            {"goto", SpecialSymbolType.GotoToken},
 
-            {"label", 129},
-            {"const", 130},
-            {"type", 131},
-            {"program", 132},
-            {"mod", 133},
-            {"in", 134}
+            {"label", SpecialSymbolType.LabelToken},
+            {"const", SpecialSymbolType.ConstToken},
+            {"type", SpecialSymbolType.TypeToken},
+            {"program", SpecialSymbolType.ProgramToken},
+            {"mod", SpecialSymbolType.ModToken},
+            {"in",SpecialSymbolType.InToken}
         };
 
         public Lexer(IOModule IO)
@@ -103,7 +103,7 @@ namespace PascalCompiler
                         ReadMultilineComment();
                         break;
                     case '\n':case '\r':
-                        Next();
+                        _position++;
                         break;
                     case ' ': case '\t':
                         ReadWhiteSpace();
@@ -151,7 +151,7 @@ namespace PascalCompiler
             }
         }
 
-        public SyntaxToken GetNextToken()
+        public LexicalToken GetNextToken()
         {
             // 1. Чтение спец. символов '\n','\r','\t' итд, а также комментариев (одно/многострочных)
             ReadUnnecessary();
@@ -160,77 +160,77 @@ namespace PascalCompiler
             switch (Current)
             {
                 case '\0':
-                    return new SyntaxToken(TokenType.EndOfFileToken, '\0', _position);
+                    return new TriviaToken(_position, TriviaTokenType.EndOfFileToken);
                 case '+':
-                    return new SyntaxToken(TokenType.PlusToken, _position++);
+                    return new SpecialSymbolToken(_position++, SpecialSymbolType.PlusToken);
                 case '-':
-                    return new SyntaxToken(TokenType.MinusToken, _position++);
+                    return new SpecialSymbolToken(_position++, SpecialSymbolType.MinusToken);
                 case '*':
-                    return new SyntaxToken(TokenType.MultToken, _position++);
+                    return new SpecialSymbolToken(_position++, SpecialSymbolType.MultToken);
                 case '/':
-                    return new SyntaxToken(TokenType.DivisionToken, _position++);
+                    return new SpecialSymbolToken(_position++, SpecialSymbolType.DivisionToken);
                 case '(':
-                    return new SyntaxToken(TokenType.LeftRoundBracketToken, _position++);
+                    return new SpecialSymbolToken(_position++, SpecialSymbolType.LeftRoundBracketToken);
                 case ')':
-                    return new SyntaxToken(TokenType.RightRoundBracketToken, _position++);
+                    return new SpecialSymbolToken(_position++, SpecialSymbolType.RightRoundBracketToken);
                 case '<':
-                    Next();
+                    _position++;
                     if (Current == '=')
                     {
-                        return new SyntaxToken(TokenType.LessOrEqualToken, _position++); // '<='
+                        return new SpecialSymbolToken(_position++, SpecialSymbolType.LessOrEqualToken); // '<='
                     }
                     else if (Current == '>')
                     {
-                        return new SyntaxToken(TokenType.NotEqualToken, _position++); // '<>'
+                        return new SpecialSymbolToken(_position++, SpecialSymbolType.NotEqualToken); // '<>'
                     }
                     else
                     {
-                        return new SyntaxToken(TokenType.LessToken, _position); // '<'
+                        return new SpecialSymbolToken(_position, SpecialSymbolType.LessToken); // '<'
                     }
                 case '>':
-                    Next();
+                    _position++;
                     if (Current == '=')
                     {
-                        return new SyntaxToken(TokenType.GreaterOrEqualToken, _position++); // '>='
+                        return new SpecialSymbolToken(_position++, SpecialSymbolType.GreaterOrEqualToken); // '>='
                     }
                     else
                     {
-                        return new SyntaxToken(TokenType.GreaterToken, _position); // '>'
+                        return new SpecialSymbolToken(_position, SpecialSymbolType.GreaterToken); // '>'
                     }
                 case '=':
-                    return new SyntaxToken(TokenType.EqualToken, _position++);
+                    return new SpecialSymbolToken(_position++, SpecialSymbolType.EqualToken);
                 case ':':
-                    Next();
+                    _position++;
                     if (Current == '=')
                     {
-                        return new SyntaxToken(TokenType.AssignmentToken, _position++); // ':='
+                        return new SpecialSymbolToken(_position++, SpecialSymbolType.AssignmentToken); // ':='
                     }
                     else
                     {
-                        return new SyntaxToken(TokenType.ColonToken, _position); // ':'
+                        return new SpecialSymbolToken(_position, SpecialSymbolType.ColonToken); // ':'
                     }
                 case ';':
-                    return new SyntaxToken(TokenType.SemicolonToken, _position++);
+                    return new SpecialSymbolToken(_position++, SpecialSymbolType.SemicolonToken);
                 case '[':
-                    return new SyntaxToken(TokenType.LeftSquareBracketToken, _position++);
+                    return new SpecialSymbolToken(_position++, SpecialSymbolType.LeftSquareBracketToken);
                 case ']':
-                    return new SyntaxToken(TokenType.RightSquareBracketToken, _position++);
+                    return new SpecialSymbolToken(_position++, SpecialSymbolType.RightSquareBracketToken);
                 case ',':
-                    return new SyntaxToken(TokenType.CommaToken, _position++);
+                    return new SpecialSymbolToken(_position++, SpecialSymbolType.CommaToken);
                 case '.':
                     _position++;
                     if (Current == '.')
                     {
-                        return new SyntaxToken(TokenType.DoubleDotToken, _position++);
+                        return new SpecialSymbolToken(_position++, SpecialSymbolType.DoubleDotToken);
                     }
                     else
                     {
-                        return new SyntaxToken(TokenType.DotToken, _position);
+                        return new SpecialSymbolToken(_position, SpecialSymbolType.DotToken);
                     }
                 case '\'':
                     var sb = new StringBuilder();
                     int start = _position;
-                    Next();
+                    _position++;
                     while (Current != '\'')
                     {
                         if (Current == '\0' || Current == '\n' || Current == '\r')
@@ -238,143 +238,148 @@ namespace PascalCompiler
                             //TODO+ ошибка строка не закрыта
                             _io.AddError(start, CompilerError.StringExceedsLine);
                             //Console.WriteLine($"Ошибка инициализации строковой константы (Line:{_text.GetLineIndex(start) + 1})");
-                            return new SyntaxToken(TokenType.BadToken, start);
+                            return new TriviaToken(start, TriviaTokenType.BadToken);
                         }
 
                         sb.Append(Current);
-                        Next();
+                        _position++;
                     }
-                    Next();
-                    return new SyntaxToken(TokenType.StringConstToken, sb.ToString(), start);
+                    _position++;
+                    return new ConstToken<string>(start, sb.ToString());
                 case ' ':
                 case '\t':
-                    return new SyntaxToken(TokenType.SpaceToken, _position++);
+                    return new TriviaToken(_position++, TriviaTokenType.SpaceToken);
+                default:
+                    if (char.IsDigit(Current))
+                    {
+                        return ReadNum();
+                    }
+                    else if (Current.IsAsciiLetter())
+                    {
+                        return ReadIdentifier();
+                    }
+
+                    _io.AddError(_position, CompilerError.LexicalError);
+                    return new TriviaToken(_position++, TriviaTokenType.UnknownSymbol);
             }
+        }
 
-            // Сканируем идентификатор или ключевое слово
-            if (Current.IsAsciiLetter())
+        // Считывает целую или вещественную беззнаковую константу
+        private LexicalToken ReadNum()
+        {
+            int start = _position;
+            while (char.IsDigit(Current))
+                _position++;
+            int integerLen = _position - start;
+            int realLen = -1;
+
+            // Read unsigned float const
+            if (Current == '.' && NextChar != '.')
             {
-                int start = _position;
-                int length = 0;
+                // Считываем вещ. конст
+                int startReal = _position;
+                _position++;
 
-                // Макс. длина не ограничена
-                while (Current.IsAsciiLetter() || char.IsNumber(Current))
-                {
-                    length++;
-                    Next();
-                }
-                string identifierName = _text.TextSubstr(start, length);
-
-                // Ключевое слово
-                if (KeyWords.TryGetValue(identifierName.ToLower(), out int wordNum))
-                {
-                    return new SyntaxToken((TokenType)wordNum, identifierName, start);
-                }
-
-                // Идентификатор
-                return new SyntaxToken(TokenType.IdentifierToken, identifierName, start);
-            }
-
-            // Сканируем целую или вещественную беззнаковую константу
-            if (char.IsNumber(Current))
-            {
-                int start = _position;
                 while (char.IsDigit(Current))
                     _position++;
-                int integerLen = _position - start;
-                int realLen = -1;
 
-                // Read unsigned float const
-                if (Current == '.' && NextChar != '.')
+                if (_position - (startReal + 1) == 0)
                 {
-                    // Считываем вещ. конст
-                    int startReal = _position;
+                    //TODO+ ошибка инициализации вещ. константы
+                    _io.AddError(start, CompilerError.ConstError);
+                    //Console.WriteLine($"Ошибка инициализации вещественной константы (Line:{_text.GetLineIndex(_position) + 1})");
+                    return new TriviaToken(start, TriviaTokenType.BadToken);
+                }
+
+                // Считываем порядок вещ. константы (Scale factor)
+                if (Current == 'e' || Current == 'E')
+                {
                     _position++;
-
-                    while (char.IsDigit(Current))
-                        _position++;
-
-                    if (_position - (startReal + 1) == 0)
+                    if (!(Current == '-' || Current == '+' || char.IsDigit(Current)))
                     {
                         //TODO+ ошибка инициализации вещ. константы
                         _io.AddError(start, CompilerError.ConstError);
                         //Console.WriteLine($"Ошибка инициализации вещественной константы (Line:{_text.GetLineIndex(_position) + 1})");
-                        return new SyntaxToken(TokenType.BadToken, _position++);
+                        return new TriviaToken(start, TriviaTokenType.BadToken);
                     }
-
-                    // Считываем порядок вещ. константы (Scale factor)
-                    if (Current == 'e' || Current == 'E')
-                    {
-                        _position++;
-                        if (!(Current == '-' || Current == '+' || char.IsDigit(Current)))
-                        {
-                            //TODO+ ошибка инициализации вещ. константы
-                            _io.AddError(start, CompilerError.ConstError);
-                            //Console.WriteLine($"Ошибка инициализации вещественной константы (Line:{_text.GetLineIndex(_position) + 1})");
-                            return new SyntaxToken(TokenType.BadToken, _position++);
-                        }
-                        _position++;
-
-                        while (char.IsDigit(Current))
-                            _position++;
-                    }
-
-                    realLen = integerLen + (_position - startReal);
-                }
-                else if (Current == 'e' || Current == 'E')
-                {
-                    int startReal = _position;
                     _position++;
 
-                    if (!char.IsDigit(Current))
-                    {
-                        _io.AddError(startReal, CompilerError.ConstError);
-                        return new SyntaxToken(TokenType.BadToken, startReal);
-                    }
-
-                    while (char.IsDigit(Current)) // Считываем порядок
+                    while (char.IsDigit(Current))
                         _position++;
-                    
-                    realLen = integerLen + (_position - startReal);
                 }
 
-                // Parse float const
-                if (realLen > 0 && realLen != integerLen)
+                realLen = integerLen + (_position - startReal);
+            }
+            else if (Current == 'e' || Current == 'E')
+            {
+                int startReal = _position;
+                _position++;
+
+                if (!char.IsDigit(Current))
                 {
-                    try
-                    {
-                        float realNum = float.Parse(_text.TextSubstr(start, realLen), System.Globalization.CultureInfo.InvariantCulture);
-                        return new SyntaxToken(TokenType.FloatConstToken, realNum, start);
-
-                    }
-                    catch (Exception e)
-                    {
-                        //TODO+ ошибка float константа превысила допустимый предел
-                        _io.AddError(start, CompilerError.OverflowException);
-                        return new SyntaxToken(TokenType.BadToken, _position);
-                        //Console.WriteLine($"{e.Message} (Line:{_text.GetLineIndex(_position) + 1})");
-                    }
+                    _io.AddError(startReal, CompilerError.ConstError);
+                    return new TriviaToken(start, TriviaTokenType.BadToken);
                 }
 
-                // Parse unsigned integer const
+                while (char.IsDigit(Current)) // Считываем порядок
+                    _position++;
+
+                realLen = integerLen + (_position - startReal);
+            }
+
+            // Parse double const
+            if (realLen > 0 && realLen != integerLen)
+            {
                 try
                 {
-                    int intNum = int.Parse(_text.TextSubstr(start, integerLen));
-                    return new SyntaxToken(TokenType.IntConstToken, intNum, start);
+                    double doubleValue = double.Parse(_text.TextSubstr(start, realLen), System.Globalization.CultureInfo.InvariantCulture);
+                    return new ConstToken<double>(start, doubleValue);
+
                 }
-                catch (Exception e)
+                catch (Exception)
                 {
-                    //TODO+ ошибка int константа превысила допустимый предел
+                    //TODO+ ошибка float константа превысила допустимый предел
                     _io.AddError(start, CompilerError.OverflowException);
-                    return new SyntaxToken(TokenType.BadToken, _position);
-                    //Console.WriteLine($"{e.Message} (Line:{_text.GetLineIndex(_position) + 1})");
+                    return new TriviaToken(start, TriviaTokenType.BadToken);
                 }
             }
 
-            _io.AddError(_position, CompilerError.LexicalError);
-            return new SyntaxToken(TokenType.BadToken, _position++);
+            // Parse unsigned integer const
+            try
+            {
+                int intValue = int.Parse(_text.TextSubstr(start, integerLen));
+                return new ConstToken<int>(start, intValue);
+            }
+            catch (Exception)
+            {
+                //TODO+ ошибка int константа превысила допустимый предел
+                _io.AddError(start, CompilerError.OverflowException);
+                return new TriviaToken(start, TriviaTokenType.BadToken);
+            }
         }
 
-        private void Next() => _position++;
+        // Считывает идентификатор или ключевое слово
+        private LexicalToken ReadIdentifier()
+        {
+            int start = _position;
+            int length = 0;
+
+            // Макс. длина не ограничена
+            while (Current.IsAsciiLetter() || char.IsNumber(Current))
+            {
+                length++;
+                _position++;
+            }
+            string identifierName = _text.TextSubstr(start, length);
+
+            // Ключевое слово
+            if (KeyWords.TryGetValue(identifierName.ToLower(), out SpecialSymbolType type))
+            {
+                return new SpecialSymbolToken(start, type);
+            }
+
+            // Идентификатор
+            return new IdentifierToken(start, identifierName);
+        }
     }
 }

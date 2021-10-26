@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace PascalCompiler
 {
-    public enum TokenType
+    public enum SpecialSymbolType
     {
         // Special-symbol tokens
         LeftRoundBracketToken,
@@ -29,18 +29,6 @@ namespace PascalCompiler
         CommaToken,
         DotToken,
         DoubleDotToken,
-
-        // Const tokens
-        IntConstToken,
-        FloatConstToken,
-        StringConstToken,
-
-        IdentifierToken, // Identifier token
-
-        // Other tokens
-        EndOfFileToken,
-        SpaceToken,
-        BadToken,
 
         // Word-symbol
         NilToken = 100,
@@ -80,4 +68,11 @@ namespace PascalCompiler
         InToken = 134
     }
 
+    public enum TriviaTokenType
+    {
+        EndOfFileToken,
+        SpaceToken,
+        BadToken,
+        UnknownSymbol,
+    }
 }
