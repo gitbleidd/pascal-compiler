@@ -24,7 +24,7 @@ namespace PascalCompiler
             }
         }
 
-        private char NextChar
+        private char LookaheadChar
         {
             get
             {
@@ -274,7 +274,7 @@ namespace PascalCompiler
             int realLen = -1;
 
             // Read unsigned float const
-            if (Current == '.' && NextChar != '.')
+            if (Current == '.' && LookaheadChar != '.')
             {
                 // Считываем вещ. конст
                 int startReal = _position;
