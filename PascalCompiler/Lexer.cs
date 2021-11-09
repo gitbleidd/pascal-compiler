@@ -108,7 +108,7 @@ namespace PascalCompiler
                         ReadMultilineComment();
                         break;
                     case '\n':case '\r':
-                        _position++;
+                        NextPos();
                         break;
                     case ' ': case '\t':
                         ReadWhiteSpace();
@@ -123,14 +123,13 @@ namespace PascalCompiler
         private void ReadMultilineComment()
         {
             int _start = _position;
-            _position++;
+            NextPos();
             var done = false;
 
             while (!done)
             {
                 if (Current == '\0' || Current == '{')
                 {
-                    //TODO+ ошибка комментария
                     _io.AddError(_start, CompilerError.CommentWithoutEnd);
                     done = true;
                 }
@@ -140,7 +139,7 @@ namespace PascalCompiler
                     //_position++;
                 }
 
-                _position++;
+                NextPos();
             }
         }
 
@@ -151,7 +150,7 @@ namespace PascalCompiler
             while (!done)
             {
                 if (Current == ' ' || Current == '\t')
-                    _position++;
+                    NextPos();
                 return;
             }
         }
@@ -194,7 +193,7 @@ namespace PascalCompiler
                     NextPos();
                     break;
                 case '<':
-                    _position++;
+                    NextPos();
                     if (Current == '=')
                     {
                         token = new SpecialSymbolToken(_position, SpecialSymbolType.LessOrEqualToken); // '<='
@@ -276,7 +275,6 @@ namespace PascalCompiler
                         hasError = Current == '\0' || Current == '\n' || Current == '\r';
                         if (hasError)
                         {
-                            //TODO+ ошибка строка не закрыта
                             _io.AddError(start, CompilerError.StringExceedsLine);
                             //Console.WriteLine($"Ошибка инициализации строковой константы (Line:{_text.GetLineIndex(start) + 1})");
                             token = new TriviaToken(start, TriviaTokenType.BadToken);
@@ -309,7 +307,8 @@ namespace PascalCompiler
                     else
                     {
                         _io.AddError(_position, CompilerError.LexicalError);
-                        token = new TriviaToken(_position++, TriviaTokenType.UnknownSymbol);
+                        token = new TriviaToken(_position, TriviaTokenType.UnknownSymbol);
+                        NextPos();
                     }
                     break;
                     
@@ -322,7 +321,7 @@ namespace PascalCompiler
         {
             int start = _position;
             while (char.IsDigit(Current))
-                _position++;
+                NextPos();
             int integerLen = _position - start;
             int realLen = -1;
 
@@ -331,34 +330,30 @@ namespace PascalCompiler
             {
                 // Считываем вещ. конст
                 int startReal = _position;
-                _position++;
+                NextPos();
 
                 while (char.IsDigit(Current))
-                    _position++;
+                    NextPos();
 
                 if (_position - (startReal + 1) == 0)
                 {
-                    //TODO+ ошибка инициализации вещ. константы
                     _io.AddError(start, CompilerError.ConstError);
-                    //Console.WriteLine($"Ошибка инициализации вещественной константы (Line:{_text.GetLineIndex(_position) + 1})");
                     return new TriviaToken(start, TriviaTokenType.BadToken);
                 }
 
                 // Считываем порядок вещ. константы (Scale factor)
                 if (Current == 'e' || Current == 'E')
                 {
-                    _position++;
+                    NextPos();
                     if (!(Current == '-' || Current == '+' || char.IsDigit(Current)))
                     {
-                        //TODO+ ошибка инициализации вещ. константы
                         _io.AddError(start, CompilerError.ConstError);
-                        //Console.WriteLine($"Ошибка инициализации вещественной константы (Line:{_text.GetLineIndex(_position) + 1})");
                         return new TriviaToken(start, TriviaTokenType.BadToken);
                     }
-                    _position++;
+                    NextPos();
 
                     while (char.IsDigit(Current))
-                        _position++;
+                        NextPos();
                 }
 
                 realLen = integerLen + (_position - startReal);
@@ -366,7 +361,7 @@ namespace PascalCompiler
             else if (Current == 'e' || Current == 'E')
             {
                 int startReal = _position;
-                _position++;
+                NextPos();
 
                 if (!char.IsDigit(Current))
                 {
@@ -375,7 +370,7 @@ namespace PascalCompiler
                 }
 
                 while (char.IsDigit(Current)) // Считываем порядок
-                    _position++;
+                    NextPos();
 
                 realLen = integerLen + (_position - startReal);
             }
@@ -391,7 +386,6 @@ namespace PascalCompiler
                 }
                 catch (Exception)
                 {
-                    //TODO+ ошибка float константа превысила допустимый предел
                     _io.AddError(start, CompilerError.OverflowException);
                     return new TriviaToken(start, TriviaTokenType.BadToken);
                 }
@@ -405,7 +399,6 @@ namespace PascalCompiler
             }
             catch (Exception)
             {
-                //TODO+ ошибка int константа превысила допустимый предел
                 _io.AddError(start, CompilerError.OverflowException);
                 return new TriviaToken(start, TriviaTokenType.BadToken);
             }
@@ -421,7 +414,7 @@ namespace PascalCompiler
             while (Current.IsAsciiLetter() || char.IsNumber(Current))
             {
                 length++;
-                _position++;
+                NextPos();
             }
             string identifierName = _text.TextSubstr(start, length);
 
