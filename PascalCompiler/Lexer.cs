@@ -88,6 +88,11 @@ namespace PascalCompiler
             _position = 0;
         }
 
+        public void NextPos()
+        {
+            _position++;
+        }
+
         private void ReadUnnecessary()
         {
             bool done = false;
@@ -156,112 +161,160 @@ namespace PascalCompiler
             // 1. Чтение спец. символов '\n','\r','\t' итд, а также комментариев (одно/многострочных)
             ReadUnnecessary();
 
+            LexicalToken token = null;
+
             // 2. Чтение токена
             switch (Current)
             {
                 case '\0':
-                    return new TriviaToken(_position, TriviaTokenType.EndOfFileToken);
+                    token = new TriviaToken(_position, TriviaTokenType.EndOfFileToken);
+                    break;
                 case '+':
-                    return new SpecialSymbolToken(_position++, SpecialSymbolType.PlusToken);
+                    token = new SpecialSymbolToken(_position, SpecialSymbolType.PlusToken);
+                    NextPos();
+                    break;
                 case '-':
-                    return new SpecialSymbolToken(_position++, SpecialSymbolType.MinusToken);
+                    token = new SpecialSymbolToken(_position, SpecialSymbolType.MinusToken);
+                    NextPos();
+                    break;
                 case '*':
-                    return new SpecialSymbolToken(_position++, SpecialSymbolType.MultToken);
+                    token = new SpecialSymbolToken(_position, SpecialSymbolType.MultToken);
+                    NextPos();
+                    break;
                 case '/':
-                    return new SpecialSymbolToken(_position++, SpecialSymbolType.DivisionToken);
+                    token = new SpecialSymbolToken(_position, SpecialSymbolType.DivisionToken);
+                    NextPos();
+                    break;
                 case '(':
-                    return new SpecialSymbolToken(_position++, SpecialSymbolType.LeftRoundBracketToken);
+                    token = new SpecialSymbolToken(_position, SpecialSymbolType.LeftRoundBracketToken);
+                    NextPos();
+                    break;
                 case ')':
-                    return new SpecialSymbolToken(_position++, SpecialSymbolType.RightRoundBracketToken);
+                    token = new SpecialSymbolToken(_position, SpecialSymbolType.RightRoundBracketToken);
+                    NextPos();
+                    break;
                 case '<':
                     _position++;
                     if (Current == '=')
                     {
-                        return new SpecialSymbolToken(_position++, SpecialSymbolType.LessOrEqualToken); // '<='
+                        token = new SpecialSymbolToken(_position, SpecialSymbolType.LessOrEqualToken); // '<='
+                        NextPos();
                     }
                     else if (Current == '>')
                     {
-                        return new SpecialSymbolToken(_position++, SpecialSymbolType.NotEqualToken); // '<>'
+                        token = new SpecialSymbolToken(_position, SpecialSymbolType.NotEqualToken); // '<>'
+                        NextPos();
                     }
                     else
                     {
-                        return new SpecialSymbolToken(_position, SpecialSymbolType.LessToken); // '<'
+                        token = new SpecialSymbolToken(_position, SpecialSymbolType.LessToken); // '<'
                     }
+                    break;
                 case '>':
-                    _position++;
+                    NextPos();
                     if (Current == '=')
                     {
-                        return new SpecialSymbolToken(_position++, SpecialSymbolType.GreaterOrEqualToken); // '>='
+                        token = new SpecialSymbolToken(_position, SpecialSymbolType.GreaterOrEqualToken); // '>='
+                        NextPos();
                     }
                     else
                     {
-                        return new SpecialSymbolToken(_position, SpecialSymbolType.GreaterToken); // '>'
+                        token = new SpecialSymbolToken(_position, SpecialSymbolType.GreaterToken); // '>'
                     }
+                    break;
                 case '=':
-                    return new SpecialSymbolToken(_position++, SpecialSymbolType.EqualToken);
+                    token = new SpecialSymbolToken(_position, SpecialSymbolType.EqualToken);
+                    NextPos();
+                    break;
                 case ':':
-                    _position++;
+                    NextPos();
                     if (Current == '=')
                     {
-                        return new SpecialSymbolToken(_position++, SpecialSymbolType.AssignmentToken); // ':='
+                        token = new SpecialSymbolToken(_position, SpecialSymbolType.AssignmentToken); // ':='
+                        NextPos();
                     }
                     else
                     {
-                        return new SpecialSymbolToken(_position, SpecialSymbolType.ColonToken); // ':'
+                        token = new SpecialSymbolToken(_position, SpecialSymbolType.ColonToken); // ':'
                     }
+                    break;
                 case ';':
-                    return new SpecialSymbolToken(_position++, SpecialSymbolType.SemicolonToken);
+                    token = new SpecialSymbolToken(_position, SpecialSymbolType.SemicolonToken);
+                    NextPos();
+                    break;
                 case '[':
-                    return new SpecialSymbolToken(_position++, SpecialSymbolType.LeftSquareBracketToken);
+                    token = new SpecialSymbolToken(_position, SpecialSymbolType.LeftSquareBracketToken);
+                    NextPos();
+                    break;
                 case ']':
-                    return new SpecialSymbolToken(_position++, SpecialSymbolType.RightSquareBracketToken);
+                    token = new SpecialSymbolToken(_position, SpecialSymbolType.RightSquareBracketToken);
+                    NextPos();
+                    break;
                 case ',':
-                    return new SpecialSymbolToken(_position++, SpecialSymbolType.CommaToken);
+                    token = new SpecialSymbolToken(_position, SpecialSymbolType.CommaToken);
+                    NextPos();
+                    break;
                 case '.':
-                    _position++;
+                    NextPos();
                     if (Current == '.')
                     {
-                        return new SpecialSymbolToken(_position++, SpecialSymbolType.DoubleDotToken);
+                        token = new SpecialSymbolToken(_position, SpecialSymbolType.DoubleDotToken);
+                        NextPos();
                     }
                     else
                     {
-                        return new SpecialSymbolToken(_position, SpecialSymbolType.DotToken);
+                        token = new SpecialSymbolToken(_position, SpecialSymbolType.DotToken);
                     }
+                    break;
                 case '\'':
                     var sb = new StringBuilder();
                     int start = _position;
-                    _position++;
+                    NextPos();
+                    bool hasError = false;
                     while (Current != '\'')
                     {
-                        if (Current == '\0' || Current == '\n' || Current == '\r')
+                        hasError = Current == '\0' || Current == '\n' || Current == '\r';
+                        if (hasError)
                         {
                             //TODO+ ошибка строка не закрыта
                             _io.AddError(start, CompilerError.StringExceedsLine);
                             //Console.WriteLine($"Ошибка инициализации строковой константы (Line:{_text.GetLineIndex(start) + 1})");
-                            return new TriviaToken(start, TriviaTokenType.BadToken);
+                            token = new TriviaToken(start, TriviaTokenType.BadToken);
+                            break;
                         }
 
                         sb.Append(Current);
-                        _position++;
+                        NextPos();
                     }
-                    _position++;
-                    return new ConstToken<string>(start, sb.ToString());
+                    if (!hasError)
+                    {
+                        NextPos();
+                        token = new ConstToken<string>(start, sb.ToString());
+                    }
+                    break;
                 case ' ':
                 case '\t':
-                    return new TriviaToken(_position++, TriviaTokenType.SpaceToken);
+                    token = new TriviaToken(_position, TriviaTokenType.SpaceToken);
+                    NextPos();
+                    break;
                 default:
                     if (char.IsDigit(Current))
                     {
-                        return ReadNum();
+                        token = ReadNum();
                     }
                     else if (Current.IsAsciiLetter())
                     {
-                        return ReadIdentifier();
+                        token = ReadIdentifier();
                     }
-
-                    _io.AddError(_position, CompilerError.LexicalError);
-                    return new TriviaToken(_position++, TriviaTokenType.UnknownSymbol);
+                    else
+                    {
+                        _io.AddError(_position, CompilerError.LexicalError);
+                        token = new TriviaToken(_position++, TriviaTokenType.UnknownSymbol);
+                    }
+                    break;
+                    
             }
+            return token;
         }
 
         // Считывает целую или вещественную беззнаковую константу
