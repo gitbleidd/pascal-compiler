@@ -10,30 +10,19 @@ namespace PascalCompiler
 {
     class Lexer
     {
-        private readonly SourceText _text;
-        private int _position;
+        private int _position
+        {
+            get => _io.Position;
+        }
+
         private char Current 
-        { 
-            get
-            {
-                if (_position >= _text.Length)
-                {
-                    return '\0';
-                }
-                return _text[_position];
-            }
+        {
+            get => _io.CurrentChar;
         }
 
         private char LookaheadChar
         {
-            get
-            {
-                if (_position + 1 >= _text.Length)
-                {
-                    return '\0';
-                }
-                return _text[_position + 1];
-            }
+            get =>  _io.LookaheadChar;
         }
 
         private IOModule _io { get; }
@@ -84,13 +73,12 @@ namespace PascalCompiler
         public Lexer(IOModule IO)
         {
             _io = IO;
-            _text = IO.sourceText;
-            _position = 0;
+            _io.NextChar(); // Считываем первый символ
         }
 
         public void NextPos()
         {
-            _position++;
+            _io.NextChar();
         }
 
         private void ReadUnnecessary()
@@ -136,7 +124,6 @@ namespace PascalCompiler
                 else if (Current == '}')
                 {
                     done = true;
-                    //_position++;
                 }
 
                 NextPos();
@@ -276,7 +263,6 @@ namespace PascalCompiler
                         if (hasError)
                         {
                             _io.AddError(start, CompilerError.StringExceedsLine);
-                            //Console.WriteLine($"Ошибка инициализации строковой константы (Line:{_text.GetLineIndex(start) + 1})");
                             token = new TriviaToken(start, TriviaTokenType.BadToken);
                             break;
                         }
@@ -380,7 +366,7 @@ namespace PascalCompiler
             {
                 try
                 {
-                    double doubleValue = double.Parse(_text.TextSubstr(start, realLen), System.Globalization.CultureInfo.InvariantCulture);
+                    double doubleValue = double.Parse(_io.TextSubstr(start, realLen), System.Globalization.CultureInfo.InvariantCulture);
                     return new ConstToken<double>(start, doubleValue);
 
                 }
@@ -394,7 +380,7 @@ namespace PascalCompiler
             // Parse unsigned integer const
             try
             {
-                int intValue = int.Parse(_text.TextSubstr(start, integerLen));
+                int intValue = int.Parse(_io.TextSubstr(start, integerLen));
                 return new ConstToken<int>(start, intValue);
             }
             catch (Exception)
@@ -416,7 +402,7 @@ namespace PascalCompiler
                 length++;
                 NextPos();
             }
-            string identifierName = _text.TextSubstr(start, length);
+            string identifierName = _io.TextSubstr(start, length);
 
             // Ключевое слово
             if (KeyWords.TryGetValue(identifierName.ToLower(), out SpecialSymbolType type))

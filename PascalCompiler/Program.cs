@@ -65,7 +65,7 @@ namespace PascalCompiler
             }
 
             Console.WriteLine("\n\n\n\n\n");
-            io.PrintErrors(skipCleanLines: false);
+            io.PrintErrors();
         }
     }
 }

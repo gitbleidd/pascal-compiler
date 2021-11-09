@@ -11,52 +11,83 @@ namespace PascalCompiler
     class IOModule
     {
         public readonly SourceText sourceText;
-        private Dictionary<int, List<CompilerError>> _errors;
+        private Dictionary<int, (string, List<CompilerError>)> _errors;
+
+
+        private string _line = "";
+        private int _lineNum = 0;
+        private int _position = -1;
+        StreamReader sr;
+
+        public char LookaheadChar
+        {
+            get
+            {
+                return _line[_position + 1];
+            }
+        }
+
+        public char CurrentChar
+        {
+            get => _line[_position];
+        }
+
+        public int Position { get => _position; }
+
+        public char NextChar()
+        {
+            _position++;
+            if (_position >= _line.Length || _position == -1)
+            {
+                _line = sr.ReadLine();
+                _lineNum++;
+
+                if (_line == null)
+                    _line = "\0";
+                else
+                    _line += "\n\r";
+
+                _position = 0;
+            }
+
+            return _line[_position];
+        }
+
+        public string TextSubstr(int start, int length) => _line.Substring(start, length);
 
         public IOModule(string filePath)
         {
-            string text = File.ReadAllText(filePath);
-            sourceText = new SourceText(text);
-            
-            _errors = new Dictionary<int, List<CompilerError>>();
+            sr = new StreamReader(filePath);
+            _errors = new Dictionary<int, (string, List<CompilerError>)>();
             
         }
 
         public void AddError(int position, CompilerError error)
         {
-            int lineNum = sourceText.GetLineIndex(position);
-            if (_errors.TryGetValue(lineNum, out List<CompilerError> currentLineErros))
+            if (_errors.TryGetValue(_lineNum, out (string, List<CompilerError>) currentLineErros))
             {
-                currentLineErros.Add(error);
+                currentLineErros.Item2.Add(error);
             }
             else
             {
-                _errors.Add(lineNum, new List<CompilerError> { error });
+                _errors.Add(_lineNum, (_line, new List<CompilerError> { error }));
             }
         }
 
-        public void PrintErrors(bool skipCleanLines)
+        public void PrintErrors()
         {
-            for (int lineNum = 0; lineNum < sourceText.Lines.Count; lineNum++)
+            foreach (var line in _errors)
             {
-                string line = sourceText.TextSubstr(sourceText.Lines[lineNum]);
-                bool hasError = _errors.ContainsKey(lineNum);
-                if (skipCleanLines && !hasError)
-                    continue;
-                
-                if (hasError)
-                    Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine(line);
+                Console.ForegroundColor = ConsoleColor.Red;
+                string l = line.Value.Item1;
+                Console.WriteLine(l.Substring(0, l.Length - 2));
                 Console.ForegroundColor = ConsoleColor.White;
 
-                if (_errors.TryGetValue(lineNum, out List<CompilerError> currentLineErros))
+                foreach (var error in line.Value.Item2)
                 {
-                    foreach (var error in currentLineErros)
-                    {
-                        Console.WriteLine($"(Line {lineNum + 1}): error[{(int)error}]: {_errorMessage[error]}");
-                    }
+                    Console.WriteLine($"(Line {line.Key + 1}): error[{(int)error}]: {_errorMessage[error]}");
                 }
-
+                Console.WriteLine();
             }
         }
 
@@ -66,7 +97,7 @@ namespace PascalCompiler
             {CompilerError.StringExceedsLine, "строка не закрыта" },
             {CompilerError.CommentWithoutEnd, "комментарий не закрыт" },
             {CompilerError.ConstError, "ошибка в константе" },
-            {CompilerError.LexicalError, "lexical error" }
+            {CompilerError.LexicalError, "не удалось считать символ" }
         };
     }
 
