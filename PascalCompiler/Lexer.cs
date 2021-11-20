@@ -73,7 +73,7 @@ namespace PascalCompiler
         public Lexer(IOModule IO)
         {
             _io = IO;
-            _io.NextChar(); // Считываем первый символ
+            
         }
 
         public void NextPos()
@@ -275,11 +275,6 @@ namespace PascalCompiler
                         NextPos();
                         token = new ConstToken<string>(start, sb.ToString());
                     }
-                    break;
-                case ' ':
-                case '\t':
-                    token = new TriviaToken(_position, TriviaTokenType.SpaceToken);
-                    NextPos();
                     break;
                 default:
                     if (char.IsDigit(Current))

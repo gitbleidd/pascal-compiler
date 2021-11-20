@@ -10,14 +10,12 @@ namespace PascalCompiler
 
     class IOModule
     {
-        public readonly SourceText sourceText;
-        private Dictionary<int, (string, List<CompilerError>)> _errors;
-
-
+        private StreamReader _sr;
+        private bool _isStreamReaderClosed = false;
         private string _line = "";
         private int _lineNum = 0;
         private int _position = -1;
-        StreamReader sr;
+        private Dictionary<int, (string, List<CompilerError>)> _errors;
 
         public char LookaheadChar
         {
@@ -36,14 +34,22 @@ namespace PascalCompiler
 
         public char NextChar()
         {
+            if (_isStreamReaderClosed)
+                return _line[_position];
+
             _position++;
             if (_position >= _line.Length || _position == -1)
             {
-                _line = sr.ReadLine();
+                _line = _sr.ReadLine();
                 _lineNum++;
 
                 if (_line == null)
+                {
                     _line = "\0";
+                    _sr.Close();
+                    _isStreamReaderClosed = true;
+                }
+                    
                 else
                     _line += "\n\r";
 
@@ -57,9 +63,9 @@ namespace PascalCompiler
 
         public IOModule(string filePath)
         {
-            sr = new StreamReader(filePath);
+            _sr = new StreamReader(filePath);
             _errors = new Dictionary<int, (string, List<CompilerError>)>();
-            
+            NextChar(); // Считываем первый символ
         }
 
         public void AddError(int position, CompilerError error)

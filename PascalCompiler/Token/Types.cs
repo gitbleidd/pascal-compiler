@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace PascalCompiler
+namespace PascalCompiler.Token
 {
     public enum SpecialSymbolType
     {
@@ -65,13 +65,12 @@ namespace PascalCompiler
         TypeToken,
         ProgramToken,
         ModToken,
-        InToken = 134
+        InToken = 134,
     }
 
     public enum TriviaTokenType
     {
         EndOfFileToken,
-        SpaceToken,
         BadToken,
         UnknownSymbol,
     }
