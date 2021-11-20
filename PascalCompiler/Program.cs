@@ -7,11 +7,19 @@ namespace PascalCompiler
     {
         static void Main(string[] args)
         {
-            var io = new IOModule(@"C:\Users\gitbleidd\Desktop\ФГИМТ\test.pas");
+            var io = new IOModule(@"C:\Users\gitbleidd\Desktop\othres\ФГИМТ\test-without-errors.pas");
             var lexer = new Lexer(io);
 
+            var syntaxAnalyzer = new SyntaxAnalyzer(lexer);
+            syntaxAnalyzer.Start();
+
+            io.PrintErrors();
+        }
+
+        public static void ReadTokens(Lexer lexer)
+        {
             Token.LexicalToken token = lexer.GetNextToken();
-            bool done = false;
+            bool done = true;
             while (!done)
             {
                 switch (token)
@@ -63,9 +71,7 @@ namespace PascalCompiler
                 }
                 token = lexer.GetNextToken();
             }
-
             Console.WriteLine("\n\n\n\n\n");
-            io.PrintErrors();
         }
     }
 }
