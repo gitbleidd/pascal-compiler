@@ -9,19 +9,30 @@ namespace PascalCompiler
 {
     class SyntaxAnalyzer
     {
+        private IOModule _io;
         private Lexer _lexer;
         private LexicalToken _token;
 
-        public SyntaxAnalyzer(Lexer lexer)
+        public SyntaxAnalyzer(IOModule io, Lexer lexer)
         {
+            _io = io;
             _lexer = lexer;
         }
 
         private void NextToken()
         {
             _token = _lexer.GetNextToken();
+            
+            // Пропускаем ошибочные токены.
+            var triviaT = (_token as TriviaToken);
+            while (triviaT != null && triviaT.Type != TriviaTokenType.EndOfFileToken)
+            {
+                _token = _lexer.GetNextToken();
+                triviaT = (_token as TriviaToken);
+            }
         }
 
+        // Проверяет является ли текущий токен последним.
         private bool IsFileEnded()
         {
             if (_token is TriviaToken)
@@ -38,22 +49,17 @@ namespace PascalCompiler
             {
 
             }
-
-            if (_token is SpecialSymbolToken)
+            var specialSymbolToken = _token as SpecialSymbolToken;
+            if (specialSymbolToken == null || specialSymbolToken.Type != symbolType)
             {
-                var specialSymbolToken = (SpecialSymbolToken)_token;
-                if (specialSymbolToken.Type != symbolType)
-                    throw new Exception($"Ожидался {symbolType} вместо {specialSymbolToken.Type}");
-            }
-            else
-            {
-                throw new Exception();
+                throw new Exception($"Ожидался {symbolType}");
             }
 
             NextToken();
         }
 
-        private void Accept(HashSet<SpecialSymbolType> specialSymbols)
+        /*
+        private void Accept(params SpecialSymbolType[] specialSymbols)
         {
             if (IsFileEnded())
             {
@@ -72,8 +78,9 @@ namespace PascalCompiler
 
             NextToken();
         }
+        */
 
-        public void Accept<T>()
+        public void Accept<T>() where T: class
         {
             if (IsFileEnded())
             {
@@ -99,7 +106,7 @@ namespace PascalCompiler
             Accept<IdentifierToken>();
             Accept(SpecialSymbolType.SemicolonToken);
             Block();
-            //Accept(SpecialSymbolType.DotToken);
+            Accept(SpecialSymbolType.DotToken);
         }
 
         private void Block()
@@ -107,7 +114,7 @@ namespace PascalCompiler
             // 1. Раздел меток
             // 2. Раздел констант
             // 3. Раздел типов (доп.)
-            
+
             VariablePart(); // 4. Раздел переменных
             // 5. Раздел процедур и функций
 
@@ -118,9 +125,9 @@ namespace PascalCompiler
         {
             // Анализ конструкции <раздел переменных>.
             // <раздел переменных>::= var <описание однотипных переменных>; {< описание однотипных переменных>; } | < пусто >
-            
+
             Accept(SpecialSymbolType.VarToken);
-            
+
             do
             {
                 VariableDeclaration();
@@ -133,8 +140,8 @@ namespace PascalCompiler
             // Анализ конструкции <описание однотипных переменных>.
             // <описание однотипных переменных>::= <имя>{,<имя>}:<тип>
             Accept<IdentifierToken>();
-            
-            while(_token is SpecialSymbolToken && ((SpecialSymbolToken)_token).Type == SpecialSymbolType.CommaToken)
+
+            while (_token is SpecialSymbolToken && ((SpecialSymbolToken)_token).Type == SpecialSymbolType.CommaToken)
             {
                 NextToken();
                 Accept<IdentifierToken>();
@@ -151,11 +158,9 @@ namespace PascalCompiler
             // <перечислимый тип>::= (< имя >{,< имя >})
             // <ограниченный тип>::=<константа> .. <константа>
 
-            IdentifierToken identifierToken = null;
             if (_token is IdentifierToken)
             {
-                identifierToken = (IdentifierToken)_token;
-
+                var identifierToken = _token as IdentifierToken;
                 switch (identifierToken.Name)
                 {
                     case "integer":
@@ -168,7 +173,7 @@ namespace PascalCompiler
                         break;
                     default:
                         // TODO проверка на типы, описанные пользователем.
-                        throw new Exception("Ожидалось имя типа");
+                        throw new Exception("Тип не является одним из встроенных: integer, real, string, boolean");
                         break;
                 }
                 NextToken();

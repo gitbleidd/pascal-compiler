@@ -10,7 +10,7 @@ namespace PascalCompiler
             var io = new IOModule(@"C:\Users\gitbleidd\Desktop\othres\ФГИМТ\test-without-errors.pas");
             var lexer = new Lexer(io);
 
-            var syntaxAnalyzer = new SyntaxAnalyzer(lexer);
+            var syntaxAnalyzer = new SyntaxAnalyzer(io, lexer);
             syntaxAnalyzer.Start();
 
             io.PrintErrors();
