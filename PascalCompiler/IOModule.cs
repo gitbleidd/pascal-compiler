@@ -14,8 +14,10 @@ namespace PascalCompiler
         private bool _isStreamReaderClosed = false;
         private string _line = "";
         private int _lineNum = 0;
-        private int _position = -1;
-        private Dictionary<int, (string, List<CompilerError>)> _errors;
+        private int _position = -1; // Позиция в текущей строке.
+
+        // Словарь с ошибками: key - номер строки с ошибкой. Value - кортеж с самой строкой и списоком ошибок в ней.
+        private Dictionary<int, (string errorLine, List<CompilerError> lineErrors)> _errors; 
 
         public char LookaheadChar
         {
@@ -80,21 +82,28 @@ namespace PascalCompiler
             }
         }
 
+        /// <summary>
+        /// Вывод всех ошибок, содержащихся в буфере, в консоль.
+        /// </summary>
         public void PrintErrors()
         {
+            int errorCount = 0;
             foreach (var line in _errors)
             {
-                Console.ForegroundColor = ConsoleColor.Red;
-                string l = line.Value.Item1;
-                Console.WriteLine(l.Substring(0, l.Length - 2));
-                Console.ForegroundColor = ConsoleColor.White;
+                errorCount += line.Value.lineErrors.Count;
 
-                foreach (var error in line.Value.Item2)
+                Console.ForegroundColor = ConsoleColor.Red;
+                string l = line.Value.errorLine;
+                Console.WriteLine(l.Substring(0, l.Length - 2));
+                Console.ForegroundColor = ConsoleColor.Gray;
+
+                foreach (var error in line.Value.lineErrors)
                 {
                     Console.WriteLine($"(Line {line.Key + 1}): error[{(int)error}]: {_errorMessage[error]}");
                 }
                 Console.WriteLine();
             }
+            Console.WriteLine($"Кол-во ошибок: {errorCount}");
         }
 
         private Dictionary<CompilerError, string> _errorMessage = new Dictionary<CompilerError, string>
