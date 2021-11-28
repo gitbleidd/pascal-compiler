@@ -141,10 +141,12 @@ namespace PascalCompiler
             // <описание однотипных переменных>::= <имя>{,<имя>}:<тип>
             Accept<IdentifierToken>();
 
-            while (_token is SpecialSymbolToken && ((SpecialSymbolToken)_token).Type == SpecialSymbolType.CommaToken)
+            var specialSymbolToken = _token as SpecialSymbolToken;
+            while (specialSymbolToken?.Type == SpecialSymbolType.CommaToken)
             {
-                NextToken();
+                Accept(SpecialSymbolType.CommaToken);
                 Accept<IdentifierToken>();
+                specialSymbolToken = _token as SpecialSymbolToken;
             }
             Accept(SpecialSymbolType.ColonToken);
 
@@ -191,14 +193,24 @@ namespace PascalCompiler
             Accept(SpecialSymbolType.BeginToken);
             Statement();
 
-            bool isSemicolon = _token is SpecialSymbolToken && ((SpecialSymbolToken)_token).Type == SpecialSymbolType.SemicolonToken;
+            var specialSymbolToken = _token as SpecialSymbolToken;
+            bool isSemicolon = specialSymbolToken?.Type == SpecialSymbolType.SemicolonToken;
             while (isSemicolon)
             {
-                NextToken();
+                Accept(SpecialSymbolType.SemicolonToken);
+                specialSymbolToken = _token as SpecialSymbolToken;
+
+                if (specialSymbolToken?.Type == SpecialSymbolType.EndToken)
+                {
+                    Accept(SpecialSymbolType.EndToken);
+                    return;
+                }
+
                 Statement();
-                isSemicolon = _token is SpecialSymbolToken && ((SpecialSymbolToken)_token).Type == SpecialSymbolType.SemicolonToken;
+                specialSymbolToken = _token as SpecialSymbolToken;
+                isSemicolon = specialSymbolToken?.Type == SpecialSymbolType.SemicolonToken;
             }
-            Accept(SpecialSymbolType.EndToken);
+            Accept(SpecialSymbolType.SemicolonToken);
         }
 
         private void Statement()
@@ -212,9 +224,9 @@ namespace PascalCompiler
             {
                 SimpleStatement();
             }
-            else if (specialSymbolToken.Type == SpecialSymbolType.BeginToken)
+            else
             {
-
+                CompoundStatement();
             }
         }
 
@@ -230,10 +242,7 @@ namespace PascalCompiler
         {
             // Анализ конструкции <оператор присваивания>.
             // <оператор присваивания>::= <переменная>:= <выражение> | <имя функции>:=<выражение>
-
-            // <переменная>::= <имя переменной> | <компонента переменной> | <указанная переменная>
-            // (Не надо) 2. <компонента переменной>::=<индексированная переменная> |<обозначение поля>|<буфер файла>
-            // (Не надо) 3. <указанная переменная>::=<переменная-ссылка>
+            // <переменная>::= <имя переменной> 
 
             // 1) Имя переменной
             var variable = _token as IdentifierToken;
@@ -247,42 +256,59 @@ namespace PascalCompiler
             Accept(SpecialSymbolType.AssignmentToken);
 
             // 3) Выражение
-            // TODO в зависимости от типа переменной, которой мы присваиваем значение
-            // выбрать соответствующий вариант метода SimpleExpression: double(int), string, bool
-            double value = SimpleExpression();
-
-            // <выражение>::= <простое выражение> | <простое выражение><операция отношения><простое выражение>
-
-            // <операция отношения>::==|<>|<|<=|>=|>|in
+            Expression();
         }
 
-        private double SimpleExpression()
+        private void Expression()
         {
+            // Анализ конструкции <выражение>.
+            // <выражение>::= <простое выражение> | <простое выражение> <операция отношения> <простое выражение>
+            SimpleExpression();
+            
+            var specialSymbolToken = _token as SpecialSymbolToken;
+            if (specialSymbolToken is not null)
+            {
+                // <операция отношения>::= <>|=|<|<=|>=|>|in
+                switch (specialSymbolToken.Type)
+                {
+                    case SpecialSymbolType.NotEqualToken:
+                    case SpecialSymbolType.EqualToken:
+                    case SpecialSymbolType.LessToken:
+                    case SpecialSymbolType.LessOrEqualToken:
+                    case SpecialSymbolType.GreaterToken:
+                    case SpecialSymbolType.GreaterOrEqualToken:
+                    case SpecialSymbolType.InToken:
+                        NextToken();
+                        SimpleExpression();
+                        break;
+                    default:
+                        break;
+                }
+            }
+        }
 
-            // <простое выражение>::=<знак><слагаемое> {<аддитивная операция><слагаемое>}
-            // <аддитивная операция>::=+|-|or
+        private void SimpleExpression()
+        {
+            // <простое выражение>::= <знак><слагаемое> {<аддитивная операция><слагаемое>}
+            // <аддитивная операция>::= +|-|or
 
             // Знак перед слагаемым.
-            int sign = 1; 
             var specialSymbolToken = _token as SpecialSymbolToken;
             if (specialSymbolToken != null)
             {
                 switch (specialSymbolToken.Type)
                 {
                     case SpecialSymbolType.PlusToken:
-                        sign = 1;
-                        NextToken();
-                        break;
                     case SpecialSymbolType.MinusToken:
-                        sign = -1;
+                    case SpecialSymbolType.OrToken:
                         NextToken();
                         break;
                     default:
+                        //throw new Exception("По БНФ <простое выражение> требуется знак!!!!");
                         break;
                 }
             }
-            double left = Term() * sign; // Слагаемое.
-
+            Term(); // <слагаемое>
 
             // {<аддитивная операция><слагаемое>}
             specialSymbolToken = _token as SpecialSymbolToken;
@@ -291,13 +317,12 @@ namespace PascalCompiler
             {
                 switch (specialSymbolToken.Type)
                 {
+                    // +|-|or
                     case SpecialSymbolType.PlusToken:
-                        NextToken();
-                        left += Term();
-                        break;
                     case SpecialSymbolType.MinusToken:
+                    case SpecialSymbolType.OrToken:
                         NextToken();
-                        left -= Term();
+                        Term();
                         break;
                     default:
                         isAdditiveOper = false;
@@ -305,15 +330,14 @@ namespace PascalCompiler
                 }
                 specialSymbolToken = _token as SpecialSymbolToken;
             }
-            return left;
         }
 
-        private double Term()
+        private void Term()
         {
             // Анализ конструкции <слагаемое>.
             // <слагаемое>::= <множитель>{<мультипликативная операция><множитель>}
             // <мультипликативная операция>::=*|/|div|mod|and
-            double left = Factor(); // Множитель.
+            Factor(); // <множитель>
 
             var specialSymbolToken = _token as SpecialSymbolToken;
             bool isMultOper = true;
@@ -322,17 +346,11 @@ namespace PascalCompiler
                 switch (specialSymbolToken.Type)
                 {
                     case SpecialSymbolType.MultToken:
-                        NextToken();
-                        left *= Factor();
-                        break;
                     case SpecialSymbolType.DivisionToken:
                     case SpecialSymbolType.DivToken:
-                        NextToken();
-                        left /= Factor();
-                        break;
                     case SpecialSymbolType.ModToken:
                         NextToken();
-                        left %= Factor();
+                        Factor();
                         break;
                     default:
                         isMultOper = false;
@@ -340,53 +358,125 @@ namespace PascalCompiler
                 }
                 specialSymbolToken = _token as SpecialSymbolToken;
             }
-            return left;
         }
 
-        private double Factor()
+        private void Factor()
         {
-            // <множитель>::= <переменная> | <константа без знака> | (<выражение>) | <обозначение функции> | <множество> | not <множитель>
+            // Анализ конструкции <множитель>.
+            // <множитель>::= <переменная> | <обозначение функции> | <константа без знака> | (<выражение>) | not <множитель>
             // <константа без знака>::= <число без знака> | <строка> | <имя константы> | nil
 
-            double? left = null;
 
+            // <переменная> | <обозначение функции> |
+            // <имя константы> 
             if (_token is IdentifierToken)
             {
-                // TODO <переменная> | <обозначение функции>
+                NextToken();
             }
 
-            // Константы
+            // <константа без знака>
             else if (_token is ConstToken<int>) // число int без знака
             {
-                left = ((ConstToken<int>)_token).Value;
                 NextToken();
             }
             else if (_token is ConstToken<double>) // число real без знака
             {
-                left = ((ConstToken<double>)_token).Value;
                 NextToken();
             }
             else if (_token is ConstToken<string>) // строка
             {
-                throw new Exception("Ожидалась числовая константа");
+                NextToken();
             }
-            // TODO? имя константы
-            // TODO? nil
+
+            // nil | not <множитель> | (<выражение>)
             else if (_token is SpecialSymbolToken)
             {
-                // (<выражение>) | not <множитель>
-
-                Accept(SpecialSymbolType.LeftRoundBracketToken);
-                left = SimpleExpression();
-                Accept(SpecialSymbolType.RightRoundBracketToken);
+                var specialSymbolToken = _token as SpecialSymbolToken;
+                switch (specialSymbolToken.Type)
+                {
+                    case SpecialSymbolType.NilToken:
+                        Accept(SpecialSymbolType.NilToken);
+                        break;
+                    case SpecialSymbolType.NotToken:
+                        Accept(SpecialSymbolType.NotToken);
+                        Factor();
+                        break;
+                    case SpecialSymbolType.LeftRoundBracketToken:
+                        Accept(SpecialSymbolType.LeftRoundBracketToken);
+                        SimpleExpression();
+                        Accept(SpecialSymbolType.RightRoundBracketToken);
+                        break;
+                    default:
+                        break;
+                }
             }
+        }
 
-            if (left.HasValue)
-                return left.Value;
-            else
+        private void CompoundStatement()
+        {
+            // Анализ конструкции <сложный оператор>.
+            // <сложный оператор>::= <составной оператор> | <выбирающий оператор> | <оператор цикла> | <оператор присоединения>
+
+            var specialSymbolToken = _token as SpecialSymbolToken; // Не может быть null, тк обязательно проверится в анализе конструкции <оператор>.
+            switch (specialSymbolToken.Type)
             {
-                throw new Exception("Токен не удовлетворяет ни одному из перечисленных: " +
-                    "<переменная> | <константа без знака> | (<выражение>) | <обозначение функции> | <множество> | not <множитель>");
+                // <составной оператор>
+                case SpecialSymbolType.BeginToken:
+                    //CompositeStatement();
+                    StatementPart(); // Анализ конструкции <составной оператор>.
+                    break;
+
+                // <выбирающий оператор>
+                case SpecialSymbolType.IfToken:
+                    IfStatement();
+                    break;
+                case SpecialSymbolType.CaseToken:
+                    throw new Exception("Оператор варианта case - не поддерживается.");
+
+                // <оператор цикла>
+                case SpecialSymbolType.WhileToken:
+                    WhileStatement();
+                    break;
+                case SpecialSymbolType.RepeatToken:
+                    throw new Exception("Оператор цикла с постусловием repeat - не поддерживается.");
+                case SpecialSymbolType.ForToken:
+                    throw new Exception("Оператор цикла с параметром for - не поддерживается.");
+
+                // <оператор присоединения>
+                case SpecialSymbolType.WithToken:
+                    throw new Exception("Оператор присоединения with - не поддерживается.");
+
+                default: 
+                    throw new Exception("Ошибка конструкции <сложный оператор>.");
+            }
+        }
+
+        private void WhileStatement()
+        {
+            // Анализ конструкции <цикл с предусловием>.
+            // <цикл с предусловием>::= while <выражение> do <оператор>
+
+            Accept(SpecialSymbolType.WhileToken);
+            Expression();
+            Accept(SpecialSymbolType.DoToken);
+            Statement();
+        }
+
+        private void IfStatement()
+        {
+            // Анализ конструкции <условный оператор>.
+            // Анализ конструкции <условный оператор>::= if <выражение> then <оператор> | if <выражение> then <оператор> else <оператор>
+            
+            Accept(SpecialSymbolType.IfToken);
+            Expression();
+            Accept(SpecialSymbolType.ThenToken);
+            Statement();
+
+            var specialSymbolToken = _token as SpecialSymbolToken;
+            if (specialSymbolToken is not null && specialSymbolToken.Type == SpecialSymbolType.ElseToken)
+            {
+                Accept(SpecialSymbolType.ElseToken);
+                Statement();
             }
         }
     }
