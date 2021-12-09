@@ -76,7 +76,8 @@ namespace PascalCompiler
             
         }
 
-        public void NextPos()
+        // Получение следующего символа из модуля IO.
+        private void NextPos()
         {
             _io.NextChar();
         }
