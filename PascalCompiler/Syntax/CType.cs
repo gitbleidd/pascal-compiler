@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace PascalCompiler
+namespace PascalCompiler.Syntax
 {
     // Базовый класс для описания типов Паскаля.
     // Хранит тип.

@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace PascalCompiler
+namespace PascalCompiler.Syntax
 {
     class SyntaxAnalyzer
     {
@@ -80,7 +80,7 @@ namespace PascalCompiler
         }
         */
 
-        public void Accept<T>() where T: class
+        private void Accept<T>() where T: class
         {
             if (IsFileEnded())
             {
@@ -218,7 +218,6 @@ namespace PascalCompiler
             // Анализ конструкции <оператор>.
             // <оператор>::= <простой оператор>|<сложный оператор>
             
-            // TODO Оператор присваивания и составной оператор.
             SpecialSymbolToken specialSymbolToken = _token as SpecialSymbolToken;
             if (specialSymbolToken == null)
             {
@@ -369,6 +368,7 @@ namespace PascalCompiler
 
             // <переменная> | <обозначение функции> |
             // <имя константы> 
+            // true, false - тоже идентификаторы.
             if (_token is IdentifierToken)
             {
                 NextToken();
