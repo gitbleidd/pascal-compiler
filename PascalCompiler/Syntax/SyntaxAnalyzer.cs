@@ -94,15 +94,6 @@ namespace PascalCompiler.Syntax
             NextToken();
         }
 
-        // Набор допустимых типов.
-        private Dictionary<string, CType> _availableTypes = new Dictionary<string, CType>
-        {
-            { "integer", new IntType() },
-            { "real", new RealType() },
-            { "string", new StringType() },
-            { "boolean", new BooleanType() }
-        };
-
         // Приводит левый тип к правому.
         // Если типы одинаковые, то возвращает тот же тип.
         public CType Cast(CType left, CType right)
@@ -486,8 +477,9 @@ namespace PascalCompiler.Syntax
 
         private CType SimpleExpression()
         {
-            // <простое выражение>::= <знак><слагаемое> {<аддитивная операция><слагаемое>}
+            // <простое выражение>::= [<знак>] <слагаемое> {<аддитивная операция><слагаемое>}
             // <аддитивная операция>::= +|-|or
+            // <знак>::=+|-
 
             // Знак перед слагаемым.
             var specialSymbolToken = _token as SpecialSymbolToken;
