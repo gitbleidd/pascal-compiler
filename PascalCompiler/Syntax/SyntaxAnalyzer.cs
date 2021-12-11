@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace PascalCompiler.Syntax
 {
-    class SyntaxAnalyzer
+    partial class SyntaxAnalyzer
     {
         private IOModule _io;
         private Lexer _lexer;
@@ -17,6 +17,7 @@ namespace PascalCompiler.Syntax
         {
             _io = io;
             _lexer = lexer;
+            ScopeInit();
         }
 
         private void NextToken()
@@ -208,21 +209,38 @@ namespace PascalCompiler.Syntax
         {
             // Анализ конструкции <описание однотипных переменных>.
             // <описание однотипных переменных>::= <имя>{,<имя>}:<тип>
+
+            // Сохраняю имена переменных. Можно в очереди.
+            var vars = new Queue<string>();
+            var identToken = _token as IdentifierToken;
             Accept<IdentifierToken>();
+            vars.Enqueue(identToken.Name);
 
             var specialSymbolToken = _token as SpecialSymbolToken;
             while (specialSymbolToken?.Type == SpecialSymbolType.CommaToken)
             {
                 Accept(SpecialSymbolType.CommaToken);
+
+                identToken = _token as IdentifierToken;
                 Accept<IdentifierToken>();
+                vars.Enqueue(identToken.Name);
+
                 specialSymbolToken = _token as SpecialSymbolToken;
             }
             Accept(SpecialSymbolType.ColonToken);
 
-            Type();
+            // Запоминаю тип.
+            CType cType = Type();
+
+            // Добавляю переменные в текущий Scope.
+            while(vars.Count > 0)
+            {
+                // Если переменная с данным именем уже существует, то выкидывается исключение.
+                CurScope.AddIdentifier(vars.Dequeue(), new IdentifierInfo(IdentifierPurpose.Variable, cType));
+            }
         }
 
-        private void Type()
+        private CType Type()
         {
             // Анализ конструкции <тип>.
             // <простой тип>::= <перечислимый тип> | <ограниченный тип> | <имя типа>
@@ -231,22 +249,9 @@ namespace PascalCompiler.Syntax
 
             if (_token is IdentifierToken)
             {
-                var identifierToken = _token as IdentifierToken;
-                switch (identifierToken.Name)
-                {
-                    case "integer":
-                        break;
-                    case "real":
-                        break;
-                    case "string":
-                        break;
-                    case "boolean":
-                        break;
-                    default:
-                        // Проверка на типы, описанные пользователем.
-                        throw new Exception("Тип не является одним из встроенных: integer, real, string, boolean");
-                }
+                var identifierName = (_token as IdentifierToken).Name;
                 NextToken();
+                return GetIdentTypeGlobally(identifierName); // Выбросит исключение, если тип не сущ.
             }
             else
             {
@@ -317,14 +322,22 @@ namespace PascalCompiler.Syntax
                 throw new Exception("Ожидалось имя переменной");
             else
                 NextToken();
-            // TODO проверить есть ли переменная в таблице переменный!
             
             // 2) Оператор присваивания
             Accept(SpecialSymbolType.AssignmentToken);
 
             // 3) Выражение
-            // TODO Проверка можно ли присвоить переменной заданого типа полученное значение.
-            Expression();
+            // Проверяем есть ли переменная в таблице переменных.
+            // И проверяем можно ли присвоить переменной заданого типа полученное значение.
+            var leftType = Expression();
+            var rightType = GetIdentTypeGlobally(variable.Name); // Исключение, если переменной нет.
+            
+            if (leftType.pasType == PascalType.Real)
+            {
+                AcceptType(leftType, PascalType.Real, PascalType.Integer); // Исключение, если тип не совместимы.
+            }
+            else
+                AcceptType(leftType, rightType.pasType); // Исключение, если типы разные.
         }
 
         private CType CheckAddOperation(CType left, CType right, SpecialSymbolType operation)
@@ -584,8 +597,9 @@ namespace PascalCompiler.Syntax
                         cType = new BooleanType();
                         break;
                     default:
-                        // TODO смотрим тип переменной в таблице идентификаторов. Пока что все переменные REAL.
-                        cType = new RealType();
+                        // TODO Пока что все переменные REAL.
+                        // Смотрим тип переменной в таблице идентификаторов.
+                        cType = GetIdentTypeGlobally(identifierToken.Name);
                         break;
                 }
                 NextToken();
