@@ -4,82 +4,12 @@ using PascalCompiler.Token;
 
 namespace PascalCompiler.Syntax
 {
-    // Класс области видимости.
-    // Хранит таблицу типов и имен данной области.
-    class Scope
-    {
-        private List<CType> _typeTable; // Хранит информацию о типах.
-        private Dictionary<string, IdentifierInfo> _identifierTable; // Хранит информацию о идентификаторах.
-
-        public Scope()
-        {
-            _typeTable = new List<CType>();
-            _identifierTable = new Dictionary<string, IdentifierInfo>();
-        }
-
-        // Добавляет новый идентификатор в данную область.
-        public void AddIdentifier(string name, IdentifierInfo info)
-        {
-            if (ContainsIdent(name))
-            {
-                throw new Exception("Идентификатор с данным именем уже содержится");
-            }
-            _identifierTable.Add(name, info);
-        }
-
-        // Добавляет новый тип в данную область.
-        public CType AddType(CType cType)
-        {
-            _typeTable.Add(cType);
-            return cType;
-        }
-
-        // Проверяет сущ-т ли идентификатор в данной области.
-        public bool ContainsIdent(string name)
-        {
-            return _identifierTable.ContainsKey(name);
-        }
-
-        public IdentifierInfo FindIdentifier(string name)
-        {
-            IdentifierInfo identInfo = null;
-            _identifierTable.TryGetValue(name, out identInfo);
-            return identInfo;
-        }
-    }
-
-    enum IdentifierPurpose
-    {
-        Const,
-        Variable,
-        ProgType,
-        Procedure,
-        Function
-    }
-
-    // Хранит информацию о идентификаторе:
-    // * назначение (константа, переменные, типы и т.д.)
-    // * тип
-    class IdentifierInfo
-    {
-        public IdentifierPurpose Purpose { get; }
-        public CType Type { get; }
-
-        public IdentifierInfo(IdentifierPurpose purpose, CType cType)
-        {
-            Purpose = purpose;
-            Type = cType;
-        }
-    }
-
-    partial class SyntaxAnalyzer
+    class ScopeManager
     {
         private Stack<Scope> _scopeTable;
-
         private Scope CurScope { get => _scopeTable.Peek(); }
 
-
-        public void ScopeInit()
+        public ScopeManager()
         {
             _scopeTable = new Stack<Scope>();
 
@@ -102,7 +32,7 @@ namespace PascalCompiler.Syntax
 
             _scopeTable.Push(scope);
 
-            // Добавление основной программы.
+            // Добавление scope основной программы.
 
             var mainScope = new Scope();
             _scopeTable.Push(mainScope);
@@ -110,20 +40,23 @@ namespace PascalCompiler.Syntax
 
         // Добавляет идентификатор из считываемой программы.
         // Проверяет сущ. ли данный идент-р: если да, то выбрасывает исключение.
-        private void AddPrgmIdent(string name, IdentifierInfo info)
+        public void AddPrgmIdent(string name, IdentifierInfo info)
         {
             if (IsIdentifierAvailable(name))
             {
                 _scopeTable.Peek().AddIdentifier(name, info);
             }
-            throw new Exception("Идентификатор уже присутствует в одной из областей видимости.");
+            else
+            {
+                throw new Exception("Идентификатор уже присутствует в одной из областей видимости.");
+            }
         }
 
-        private bool IsIdentifierAvailable(string identName)
-        {
-            // Спускается по стеку scope
-            // и проверяет доступен ли данный идентификатор.
 
+        // Пробегается по всем областям видимости в стеке
+        // и проверяет доступен ли данный идентификатор.
+        public bool IsIdentifierAvailable(string identName)
+        {
             foreach (var s in _scopeTable)
             {
                 if (s.ContainsIdent(identName))
@@ -132,7 +65,7 @@ namespace PascalCompiler.Syntax
             return true;
         }
 
-        private CType GetIdentTypeGlobally(string name)
+        public CType GetIdentTypeGlobally(string name)
         {
             foreach(var s in _scopeTable)
             {

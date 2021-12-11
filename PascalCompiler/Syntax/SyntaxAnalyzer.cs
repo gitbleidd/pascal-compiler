@@ -12,12 +12,13 @@ namespace PascalCompiler.Syntax
         private IOModule _io;
         private Lexer _lexer;
         private LexicalToken _token;
+        private ScopeManager _scopeManager;
 
         public SyntaxAnalyzer(IOModule io, Lexer lexer)
         {
             _io = io;
             _lexer = lexer;
-            ScopeInit();
+            _scopeManager = new ScopeManager();
         }
 
         private void NextToken()
@@ -229,14 +230,14 @@ namespace PascalCompiler.Syntax
             }
             Accept(SpecialSymbolType.ColonToken);
 
-            // Запоминаю тип.
+            // Запоминаем тип.
             CType cType = Type();
 
             // Добавляю переменные в текущий Scope.
             while(vars.Count > 0)
             {
                 // Если переменная с данным именем уже существует, то выкидывается исключение.
-                CurScope.AddIdentifier(vars.Dequeue(), new IdentifierInfo(IdentifierPurpose.Variable, cType));
+                _scopeManager.AddPrgmIdent(vars.Dequeue(), new IdentifierInfo(IdentifierPurpose.Variable, cType));
             }
         }
 
@@ -251,7 +252,7 @@ namespace PascalCompiler.Syntax
             {
                 var identifierName = (_token as IdentifierToken).Name;
                 NextToken();
-                return GetIdentTypeGlobally(identifierName); // Выбросит исключение, если тип не сущ.
+                return _scopeManager.GetIdentTypeGlobally(identifierName); // Выбросит исключение, если тип не сущ.
             }
             else
             {
@@ -330,7 +331,7 @@ namespace PascalCompiler.Syntax
             // Проверяем есть ли переменная в таблице переменных.
             // И проверяем можно ли присвоить переменной заданого типа полученное значение.
             var leftType = Expression();
-            var rightType = GetIdentTypeGlobally(variable.Name); // Исключение, если переменной нет.
+            var rightType = _scopeManager.GetIdentTypeGlobally(variable.Name); // Исключение, если переменной нет.
             
             if (leftType.pasType == PascalType.Real)
             {
@@ -599,7 +600,7 @@ namespace PascalCompiler.Syntax
                     default:
                         // TODO Пока что все переменные REAL.
                         // Смотрим тип переменной в таблице идентификаторов.
-                        cType = GetIdentTypeGlobally(identifierToken.Name);
+                        cType = _scopeManager.GetIdentTypeGlobally(identifierToken.Name);
                         break;
                 }
                 NextToken();
