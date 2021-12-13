@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection.Emit;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -66,6 +67,14 @@ namespace PascalCompiler.Syntax
     {
         public IdentifierPurpose Purpose { get; }
         public CType Type { get; }
+        public LocalBuilder LocalBuilder { get; }
+
+        public IdentifierInfo(IdentifierPurpose purpose, CType cType, LocalBuilder localBuilder)
+        {
+            Purpose = purpose;
+            Type = cType;
+            LocalBuilder = localBuilder;
+        }
 
         public IdentifierInfo(IdentifierPurpose purpose, CType cType)
         {
