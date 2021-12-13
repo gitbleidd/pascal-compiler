@@ -9,11 +9,11 @@ namespace PascalCompiler.Syntax
 {
     partial class SyntaxAnalyzer
     {
-        private IOModule _io;
-        private Lexer _lexer;
-        private LexicalToken _token;
-        private ScopeManager _scopeManager;
-
+        private IOModule _io; // Модуль IO для вывода ошибок.
+        private Lexer _lexer; // Лексер для получения токенов.
+        private LexicalToken _token; // Текущий токен.
+        private ScopeManager _scopeManager; // Менеджер для работы с областями видимости.
+        private CodeGenerator _cg = new CodeGenerator(@"C:\Users\gitbleidd\Desktop\othres\ФГИМТ\app.dll");
         public SyntaxAnalyzer(IOModule io, Lexer lexer)
         {
             _io = io;
@@ -169,6 +169,7 @@ namespace PascalCompiler.Syntax
         {
             NextToken(); // Получение первого токена.
             Program(); // Запуск анализа программы.
+            _cg.SaveAssembly();
         }
 
         private void Program()
@@ -237,7 +238,8 @@ namespace PascalCompiler.Syntax
             while(vars.Count > 0)
             {
                 // Если переменная с данным именем уже существует, то выкидывается исключение.
-                _scopeManager.AddPrgmIdent(vars.Dequeue(), new IdentifierInfo(IdentifierPurpose.Variable, cType));
+                var localBuilder = _cg.DeclareVar(cType);
+                _scopeManager.AddPrgmIdent(vars.Dequeue(), new IdentifierInfo(IdentifierPurpose.Variable, cType, localBuilder));
             }
         }
 
@@ -252,7 +254,7 @@ namespace PascalCompiler.Syntax
             {
                 var identifierName = (_token as IdentifierToken).Name;
                 NextToken();
-                return _scopeManager.GetIdentTypeGlobally(identifierName); // Выбросит исключение, если тип не сущ.
+                return _scopeManager.GetIdentInfo(identifierName).Type; // Выбросит исключение, если тип не сущ.
             }
             else
             {
@@ -330,15 +332,31 @@ namespace PascalCompiler.Syntax
             // 3) Выражение
             // Проверяем есть ли переменная в таблице переменных.
             // И проверяем можно ли присвоить переменной заданого типа полученное значение.
-            var leftType = Expression();
-            var rightType = _scopeManager.GetIdentTypeGlobally(variable.Name); // Исключение, если переменной нет.
+            //var rightType = Expression();
+            //var varInfo = _scopeManager.GetIdentInfo(variable.Name); // Исключение, если переменной с данным именем нет.
+            //var leftType = varInfo.Type;
+
             
+            var varInfo = _scopeManager.GetIdentInfo(variable.Name); // Исключение, если переменной с данным именем нет.
+            var leftType = varInfo.Type;
+            var rightType = Expression();
+
+            // Если слева переменная real, то справа может быть значение типа int, real.
+            // Иначе типы должны быть равны.
+            // Если условие не выполняется, то выбрасывается исключение.
             if (leftType.pasType == PascalType.Real)
             {
-                AcceptType(leftType, PascalType.Real, PascalType.Integer); // Исключение, если тип не совместимы.
+                AcceptType(rightType, PascalType.Real, PascalType.Integer);
             }
             else
-                AcceptType(leftType, rightType.pasType); // Исключение, если типы разные.
+                AcceptType(rightType, leftType.pasType);
+
+
+            _cg.Assign(varInfo.LocalBuilder);
+            _cg.PrintConst(varInfo.LocalBuilder);
+            //_cg.PrintConst(varInfo.LocalBuilder);
+            //_cg.PrintConst(_scopeManager.GetIdentInfo("i").LocalBuilder);
+            //_cg.Save();
         }
 
         private CType CheckAddOperation(CType left, CType right, SpecialSymbolType operation)
@@ -481,6 +499,7 @@ namespace PascalCompiler.Syntax
                         NextToken();
                         CType right = SimpleExpression();
                         left = CheckRelationOperation(left, right, specialSymbolToken.Type);
+                        _cg.AddOperation(specialSymbolToken.Type);
                         break;
                     default:
                         break;
@@ -514,12 +533,14 @@ namespace PascalCompiler.Syntax
             }
             CType left = Term(); // <слагаемое>
 
+            if (sign != null && sign == SpecialSymbolType.MinusToken)
+                _cg.NegValue();
+
             // Знак может быть только перед integer, real.
             if (sign != null)
             {
                 AcceptType(left, PascalType.Integer, PascalType.Real);
             }
-
 
             // {<аддитивная операция><слагаемое>}
             specialSymbolToken = _token as SpecialSymbolToken;
@@ -535,6 +556,12 @@ namespace PascalCompiler.Syntax
                         NextToken();
                         CType right = Term();
                         left = CheckAddOperation(left, right, specialSymbolToken.Type); // Проверяем возможно ли выполнить операцию.
+                        if (left.pasType == PascalType.String)
+                            _cg.ConcatString();
+                        else
+                        {
+                            _cg.AddOperation(specialSymbolToken.Type);
+                        }
                         break;
                     default:
                         isAdditiveOper = false;
@@ -565,8 +592,8 @@ namespace PascalCompiler.Syntax
                     case SpecialSymbolType.AndToken:
                         NextToken();
                         CType right = Factor();
-                        left = TryCast(left, right);
                         left = CheckMultOperation(left, right, specialSymbolToken.Type);
+                        _cg.AddOperation(specialSymbolToken.Type);
                         break;
                     default:
                         isMultOper = false;
@@ -595,30 +622,35 @@ namespace PascalCompiler.Syntax
                     // Cмотреть таблица, тк true, false можно переопределить.
                     case "true":
                     case "false":
+                        _cg.AddValue(identifierToken.Name == "true");
                         cType = new BooleanType();
                         break;
                     default:
-                        // TODO Пока что все переменные REAL.
                         // Смотрим тип переменной в таблице идентификаторов.
-                        cType = _scopeManager.GetIdentTypeGlobally(identifierToken.Name);
+                        var identInfo = _scopeManager.GetIdentInfo(identifierToken.Name);
+                        _cg.AddValue(identInfo.LocalBuilder);
+                        cType = identInfo.Type;
                         break;
                 }
                 NextToken();
             }
 
             // <константа без знака>
-            else if (_token is ConstToken<int>) // число int без знака
+            else if (_token is ConstToken<int> intToken) // число int без знака
             {
+                _cg.AddValue(intToken.Value);
                 cType = new IntType();
                 NextToken();
             }
-            else if (_token is ConstToken<double>) // число real без знака
+            else if (_token is ConstToken<double> doubleToken) // число real без знака
             {
+                _cg.AddValue(doubleToken.Value);
                 cType = new RealType();
                 NextToken();
             }
-            else if (_token is ConstToken<string>) // строка
+            else if (_token is ConstToken<string> stringToken) // строка
             {
+                _cg.AddValue(stringToken.Value);
                 cType = new StringType();
                 NextToken();
             }
@@ -630,8 +662,8 @@ namespace PascalCompiler.Syntax
                 switch (specialSymbolToken.Type)
                 {
                     case SpecialSymbolType.NilToken:
-                        Accept(SpecialSymbolType.NilToken);
                         // nil - типа указатель. Не обрабатывается.
+                        Accept(SpecialSymbolType.NilToken);
                         throw new Exception("Поддержка nil не реализована.");
                     case SpecialSymbolType.NotToken:
                         Accept(SpecialSymbolType.NotToken);
@@ -641,6 +673,8 @@ namespace PascalCompiler.Syntax
                             throw new Exception("Ожидался тип Boolean.");
                         }
                         break;
+
+                    // Выражение со скобками.
                     case SpecialSymbolType.LeftRoundBracketToken:
                         Accept(SpecialSymbolType.LeftRoundBracketToken);
                         cType = Expression();

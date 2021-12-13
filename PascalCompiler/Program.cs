@@ -9,12 +9,9 @@ namespace PascalCompiler
         static void Main(string[] args)
         {
             var io = new IOModule(@"C:\Users\gitbleidd\Desktop\othres\ФГИМТ\test-without-errors.pas");
-            io = new IOModule(@"C:\Users\gitbleidd\Desktop\othres\ФГИМТ\test.pas");
             var lexer = new Lexer(io);
-            ReadTokens(lexer); 
-            return;
 
-            var syntaxAnalyzer = new SyntaxAnalyzer(io, lexer);
+            var syntaxAnalyzer = new Syntax.SyntaxAnalyzer(io, lexer);
             syntaxAnalyzer.Start();
 
             io.PrintErrors();
