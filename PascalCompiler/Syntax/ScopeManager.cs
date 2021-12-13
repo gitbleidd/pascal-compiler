@@ -65,14 +65,14 @@ namespace PascalCompiler.Syntax
             return true;
         }
 
-        public CType GetIdentTypeGlobally(string name)
+        public IdentifierInfo GetIdentInfo(string name)
         {
             foreach(var s in _scopeTable)
             {
                 IdentifierInfo identifier = s.FindIdentifier(name);
                 if (identifier is not null)
                 {
-                    return identifier.Type;
+                    return identifier;
                 }
             }
 
