@@ -47,10 +47,6 @@ namespace PascalCompiler.Syntax
 
         private void Accept(SpecialSymbolType symbolType)
         {
-            if (IsFileEnded())
-            {
-
-            }
             var specialSymbolToken = _token as SpecialSymbolToken;
             if (specialSymbolToken == null || specialSymbolToken.Type != symbolType)
             {
@@ -60,35 +56,8 @@ namespace PascalCompiler.Syntax
             NextToken();
         }
 
-        /*
-        private void Accept(params SpecialSymbolType[] specialSymbols)
-        {
-            if (IsFileEnded())
-            {
-
-            }
-
-            var specialSymbolToken = _token as SpecialSymbolToken;
-            if (specialSymbolToken is null)
-            {
-                throw new Exception($"Ожидался тип токена вместо {_token.GetType()}");
-            }
-            else if (!specialSymbols.Contains(specialSymbolToken.Type))
-            {
-                throw new Exception($"Ожидался другой спец. символа вместо {specialSymbolToken.Type}");
-            }
-
-            NextToken();
-        }
-        */
-
         private void Accept<T>() where T: class
         {
-            if (IsFileEnded())
-            {
-
-            }
-
             if (_token is not T)
             {
                 throw new Exception();
@@ -98,7 +67,7 @@ namespace PascalCompiler.Syntax
 
         // Приводит левый тип к правому.
         // Если типы одинаковые, то возвращает тот же тип.
-        public CType Cast(CType left, CType right)
+        private CType Cast(CType left, CType right)
         {
             switch (left.pasType)
             {
@@ -131,7 +100,7 @@ namespace PascalCompiler.Syntax
         }
 
         // Проверяет приводимость типов и приводит, если возможно.
-        public CType TryCast(CType left, CType right)
+        private CType TryCast(CType left, CType right)
         {
             if (left.IsCastedTo(right))
             {
@@ -309,22 +278,75 @@ namespace PascalCompiler.Syntax
         {
             // Анализ конструкции <простой оператор>.
             // <простой оператор>::= <оператор присваивания> | <оператор процедуры> | <оператор перехода> | <пустой оператор>
-            
-            AssignmentStatement(); // <оператор присваивания>
+
+            if (_token is IdentifierToken identifier)
+            {
+                string identName = identifier.Name;
+                NextToken();
+                var specialSymbol = _token as SpecialSymbolToken;
+                switch (specialSymbol.Type)
+                {
+                    case SpecialSymbolType.AssignmentToken:
+                        AssignmentStatement(identifier); // <оператор присваивания>
+                        break;
+                    case SpecialSymbolType.LeftRoundBracketToken:
+                        ProcedureStatement(identifier);
+                        break;
+                    default: break;
+                }
+            }
+            else if (_token is SpecialSymbolToken)
+            {
+                throw new Exception("Оператор goto не поддерживается");
+            }
         }
 
-        private void AssignmentStatement()
+        private void ProcedureStatement(IdentifierToken identifier)
+        {
+            // Никакие функции, кроме writeln(Type printArg) не поддерживаются!!!
+
+
+            // Анализ конструкции <обозначение функции>
+            // <обозначение функции>::= <имя функции>|<имя функции>(<фактический параметр>{,<фактический параметр>})
+
+            string procName = identifier.Name;
+            //var procInfo = _scopeManager.GetIdentInfo(procName); // Исключение, если процедуры нет.
+
+            Accept(SpecialSymbolType.LeftRoundBracketToken);
+            SpecialSymbolToken special;
+
+            // 0 параметров
+            special = _token as SpecialSymbolToken;
+            if (special?.Type == SpecialSymbolType.RightRoundBracketToken)
+            {
+                Accept(SpecialSymbolType.RightRoundBracketToken);
+                // TODO Вызвать процедуру.
+                return;
+            }
+
+            // > 1 параметра
+            special = _token as SpecialSymbolToken;
+            CType cType = Expression();
+            while (special?.Type == SpecialSymbolType.CommaToken)
+            {
+                Accept(SpecialSymbolType.CommaToken);
+                cType = Expression(); // Добавить <фактический параметр>
+                special = _token as SpecialSymbolToken;
+            }
+            Accept(SpecialSymbolType.RightRoundBracketToken);
+
+            // Вызвать процедуру.
+            _cg.PrintConst(cType);
+        }
+
+        private void AssignmentStatement(IdentifierToken identifier)
         {
             // Анализ конструкции <оператор присваивания>.
             // <оператор присваивания>::= <переменная>:= <выражение> | <имя функции>:=<выражение>
             // <переменная>::= <имя переменной> 
 
             // 1) Имя переменной
-            var variable = _token as IdentifierToken;
-            if (variable is null)
-                throw new Exception("Ожидалось имя переменной");
-            else
-                NextToken();
+            string varName = identifier.Name;
             
             // 2) Оператор присваивания
             Accept(SpecialSymbolType.AssignmentToken);
@@ -332,12 +354,7 @@ namespace PascalCompiler.Syntax
             // 3) Выражение
             // Проверяем есть ли переменная в таблице переменных.
             // И проверяем можно ли присвоить переменной заданого типа полученное значение.
-            //var rightType = Expression();
-            //var varInfo = _scopeManager.GetIdentInfo(variable.Name); // Исключение, если переменной с данным именем нет.
-            //var leftType = varInfo.Type;
-
-            
-            var varInfo = _scopeManager.GetIdentInfo(variable.Name); // Исключение, если переменной с данным именем нет.
+            var varInfo = _scopeManager.GetIdentInfo(varName); // Исключение, если переменной с данным именем нет.
             var leftType = varInfo.Type;
             var rightType = Expression();
 
@@ -353,10 +370,6 @@ namespace PascalCompiler.Syntax
 
 
             _cg.Assign(varInfo.LocalBuilder);
-            _cg.PrintConst(varInfo.LocalBuilder);
-            //_cg.PrintConst(varInfo.LocalBuilder);
-            //_cg.PrintConst(_scopeManager.GetIdentInfo("i").LocalBuilder);
-            //_cg.Save();
         }
 
         private CType CheckAddOperation(CType left, CType right, SpecialSymbolType operation)

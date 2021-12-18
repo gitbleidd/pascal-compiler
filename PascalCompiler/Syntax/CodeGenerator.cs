@@ -186,5 +186,32 @@ namespace PascalCompiler.Syntax
         {
             _il.EmitWriteLine(lb);
         }
+
+        public void PrintConst(CType cType)
+        {
+            MethodInfo fnWriteLine;
+
+            if (cType.pasType == PascalType.Integer)
+            {
+                fnWriteLine = typeof(Console).GetMethod("WriteLine", new Type[] { typeof(int) });
+            }
+            else if (cType.pasType == PascalType.Real)
+            {
+                fnWriteLine = typeof(Console).GetMethod("WriteLine", new Type[] { typeof(double) });
+            }
+            else if (cType.pasType == PascalType.Boolean)
+            {
+                fnWriteLine = typeof(Console).GetMethod("WriteLine", new Type[] { typeof(bool) });
+            }
+            else if (cType.pasType == PascalType.String)
+            {
+                fnWriteLine = typeof(Console).GetMethod("WriteLine", new Type[] { typeof(string) });
+            }
+            else
+            {
+                throw new Exception("Тип не поддерживается");
+            }
+            _il.Emit(OpCodes.Call, fnWriteLine);
+        }
     }
 }

@@ -44,7 +44,7 @@ namespace PascalCompiler.Syntax
         {
             if (IsIdentifierAvailable(name))
             {
-                _scopeTable.Peek().AddIdentifier(name, info);
+                CurScope.AddIdentifier(name, info);
             }
             else
             {
