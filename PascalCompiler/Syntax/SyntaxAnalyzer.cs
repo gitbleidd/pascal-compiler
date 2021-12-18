@@ -758,18 +758,29 @@ namespace PascalCompiler.Syntax
             // Анализ конструкции <условный оператор>::= if <выражение> then <оператор> | if <выражение> then <оператор> else <оператор>
             
             Accept(SpecialSymbolType.IfToken);
-            CType left = Expression();
-            AcceptType(left, PascalType.Boolean); // Проверка типа на boolean значение.
 
+            var falseBranch = _cg.DefineLabel();
+            var endBranch = _cg.DefineLabel();
+            CType left = Expression(); // Вычисление выражения.
+            AcceptType(left, PascalType.Boolean); // Проверка типа на boolean значение.
             Accept(SpecialSymbolType.ThenToken);
+
+            _cg.TransferControlIfFalse(falseBranch); // Если выражение false, то прыгаем в falseBranch. (Если false, то идем в else или пропускаем if)
             Statement();
+            _cg.TransferControl(endBranch); // Если выражение true, то прыгаем в endBranch. (Если true, то выполнили Statement() и перескочили else ветку)
 
             var specialSymbolToken = _token as SpecialSymbolToken;
             if (specialSymbolToken is not null && specialSymbolToken.Type == SpecialSymbolType.ElseToken)
             {
                 Accept(SpecialSymbolType.ElseToken);
+                _cg.MarkLabel(falseBranch); // Указываем, где начинается falseBranch.
                 Statement();
             }
+            else
+            {
+                _cg.MarkLabel(falseBranch);
+            }
+            _cg.MarkLabel(endBranch); // Указываем, где начинается endBranch.
         }
     }
 }

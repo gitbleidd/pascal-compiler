@@ -56,12 +56,15 @@ namespace PascalCompiler.Syntax
         // Запуск сборки.
         public void RunAssembly(string asmPath)
         {
-            Console.WriteLine("\nLoading dll\n");
+            Console.WriteLine("[Debug] Program starts from dll");
+            Console.WriteLine("[Debug] Program output:\n");
             var assembly = Assembly.LoadFile(asmPath);
             var type = assembly.GetType("Program");
             var obj = Activator.CreateInstance(type);
             var method = type.GetMethod("Main");
             method.Invoke(obj, new object[] { });
+
+            Console.WriteLine("\n[Debug] Program finished");
         }
 
         // IL команда инициализации переменной.
@@ -212,6 +215,21 @@ namespace PascalCompiler.Syntax
                 throw new Exception("Тип не поддерживается");
             }
             _il.Emit(OpCodes.Call, fnWriteLine);
+        }
+
+        public Label DefineLabel() => _il.DefineLabel();
+        public void MarkLabel(Label label) => _il.MarkLabel(label);
+
+        // Передает управление инструкции, если значение равно false, null или ноль.
+        public void TransferControlIfFalse(Label label)
+        {
+            _il.Emit(OpCodes.Brfalse, label);
+        }
+
+        // Передает управление инструкции.
+        public void TransferControl(Label label)
+        {
+            _il.Emit(OpCodes.Br, label);
         }
     }
 }
