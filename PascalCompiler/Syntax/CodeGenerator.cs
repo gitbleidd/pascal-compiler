@@ -1,5 +1,6 @@
 ﻿using PascalCompiler.Token;
 using System;
+using System.IO;
 using System.Reflection;
 using System.Reflection.Emit;
 
@@ -15,7 +16,7 @@ namespace PascalCompiler.Syntax
 
         public CodeGenerator(string assemblyPath)
         {
-            _assemblyPath = assemblyPath;
+            _assemblyPath = Path.Combine(assemblyPath, "app.dll");
 
             // Создание динамической сборки.
             string assemblyName = "PascalProgram";
@@ -220,13 +221,13 @@ namespace PascalCompiler.Syntax
         public Label DefineLabel() => _il.DefineLabel();
         public void MarkLabel(Label label) => _il.MarkLabel(label);
 
-        // Передает управление инструкции, если значение равно false, null или ноль.
+        // Передает управление заданной инструкции, если значение на стеке равно false, null или ноль.
         public void TransferControlIfFalse(Label label)
         {
             _il.Emit(OpCodes.Brfalse, label);
         }
 
-        // Передает управление инструкции.
+        // Передает управление заданной инструкции.
         public void TransferControl(Label label)
         {
             _il.Emit(OpCodes.Br, label);

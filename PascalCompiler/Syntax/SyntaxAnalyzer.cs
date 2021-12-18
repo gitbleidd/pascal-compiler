@@ -13,10 +13,12 @@ namespace PascalCompiler.Syntax
         private Lexer _lexer; // Лексер для получения токенов.
         private LexicalToken _token; // Текущий токен.
         private ScopeManager _scopeManager; // Менеджер для работы с областями видимости.
-        private CodeGenerator _cg = new CodeGenerator(@"C:\Users\gitbleidd\Desktop\othres\ФГИМТ\app.dll");
+        private CodeGenerator _cg;
         public SyntaxAnalyzer(IOModule io, Lexer lexer)
         {
             _io = io;
+            _cg = new CodeGenerator(_io.CompileResPath);
+
             _lexer = lexer;
             _scopeManager = new ScopeManager();
         }
@@ -45,12 +47,22 @@ namespace PascalCompiler.Syntax
             return false;
         }
 
+        private void PrintError()
+        {
+            // Выводит ошибку перед исключением.
+            Console.WriteLine($"Line {_io.CurrentLineNum}:");
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine(_io.CurrentLine);
+            Console.ForegroundColor = ConsoleColor.Gray;
+        }
+
         private void Accept(SpecialSymbolType symbolType)
         {
             var specialSymbolToken = _token as SpecialSymbolToken;
             if (specialSymbolToken == null || specialSymbolToken.Type != symbolType)
             {
-                throw new Exception($"Ожидался {symbolType}");
+                PrintError();
+                throw new Exception($"Ожидался {symbolType}.");
             }
 
             NextToken();
@@ -60,7 +72,8 @@ namespace PascalCompiler.Syntax
         {
             if (_token is not T)
             {
-                throw new Exception();
+                PrintError();
+                throw new Exception("Ожидалась другая лексема");
             }
             NextToken();
         }
@@ -80,6 +93,7 @@ namespace PascalCompiler.Syntax
                         case PascalType.Real:
                             return right;
                         default:
+                            PrintError();
                             throw new Exception($"Нельзя привести {left.pasType} к {right.pasType}.");
                     }
 
@@ -95,6 +109,7 @@ namespace PascalCompiler.Syntax
                 case PascalType.Boolean:
                     return left;
                 default:
+                    PrintError();
                     throw new Exception($"Тип {left.pasType} не поддерживается.");
             }
         }
@@ -108,6 +123,7 @@ namespace PascalCompiler.Syntax
             }
             else
             {
+                PrintError();
                 throw new Exception("Типы не приводимы друг к другу.");
             }
         }
@@ -118,6 +134,7 @@ namespace PascalCompiler.Syntax
         {
             if (cType.pasType != type)
             {
+                PrintError();
                 throw new Exception($"Ожидался {type}");
             }
         }
@@ -131,6 +148,7 @@ namespace PascalCompiler.Syntax
                     return;
                 }
             }
+            PrintError();
             throw new Exception($"Ожидался один из типов: " + string.Join(", ", types));
         }
 
@@ -138,7 +156,11 @@ namespace PascalCompiler.Syntax
         {
             NextToken(); // Получение первого токена.
             Program(); // Запуск анализа программы.
-            _cg.SaveAssembly();
+
+            if (!_io.HasErrors)
+            {
+                _cg.SaveAssembly();
+            }
         }
 
         private void Program()
@@ -227,6 +249,7 @@ namespace PascalCompiler.Syntax
             }
             else
             {
+                PrintError();
                 throw new Exception("Ожидалось имя типа");
             }
         }
@@ -390,6 +413,7 @@ namespace PascalCompiler.Syntax
                     }
                     else
                     {
+                        PrintError();
                         throw new Exception($"Операция + не допустима для типов: {l}, {r}");
                     }
                 case SpecialSymbolType.MinusToken:
@@ -400,6 +424,7 @@ namespace PascalCompiler.Syntax
                     }
                     else
                     {
+                        PrintError();
                         throw new Exception($"Операция - не допустима для типов: {l}, {r}");
                     }
                 case SpecialSymbolType.OrToken:
@@ -409,6 +434,7 @@ namespace PascalCompiler.Syntax
                     }
                     else
                     {
+                        PrintError();
                         throw new Exception($"Операция Or не допустима для типов: {l}, {r}");
                     }
                 default:
@@ -431,6 +457,7 @@ namespace PascalCompiler.Syntax
                     }
                     else
                     {
+                        PrintError();
                         throw new Exception($"Операции *, / не допустимы для типов: {l}, {r}");
                     }
                 case SpecialSymbolType.DivToken:
@@ -441,6 +468,7 @@ namespace PascalCompiler.Syntax
                     }
                     else
                     {
+                        PrintError();
                         throw new Exception($"Операции div, mod не допустимы для типов: {l}, {r}");
                     }
                 case SpecialSymbolType.AndToken:
@@ -450,6 +478,7 @@ namespace PascalCompiler.Syntax
                     }
                     else
                     {
+                        PrintError();
                         throw new Exception($"Операция And не допустима для типов: {l}, {r}");
                     }
                 default:
@@ -471,6 +500,7 @@ namespace PascalCompiler.Syntax
                         (l == PascalType.String && r == PascalType.String);
                     if (!canBeEqual)
                     {
+                        PrintError();
                         throw new Exception($"Операции =, <> не допустимы для типов: {l}, {r}");
                     }
                     break;
@@ -482,6 +512,7 @@ namespace PascalCompiler.Syntax
                         ((l == PascalType.Integer || l == PascalType.Real) && (r == PascalType.Integer || r == PascalType.Real));
                     if (!canBeGreaterOrLess)
                     {
+                        PrintError();
                         throw new Exception($"Операции <, <=, >, >= не допустимы для типов: {l}, {r}");
                     }
                     break;
@@ -540,7 +571,6 @@ namespace PascalCompiler.Syntax
                         NextToken();
                         break;
                     default:
-                        //throw new Exception("По БНФ <простое выражение> требуется знак!!!!");
                         break;
                 }
             }
@@ -683,6 +713,7 @@ namespace PascalCompiler.Syntax
                         cType = Factor();
                         if (cType.pasType != PascalType.Boolean)
                         {
+                            PrintError();
                             throw new Exception("Ожидался тип Boolean.");
                         }
                         break;
@@ -694,6 +725,7 @@ namespace PascalCompiler.Syntax
                         Accept(SpecialSymbolType.RightRoundBracketToken);
                         break;
                     default:
+                        PrintError();
                         throw new Exception("Не удалось определить тип множителя.");
                 }
             }
@@ -734,7 +766,8 @@ namespace PascalCompiler.Syntax
                 case SpecialSymbolType.WithToken:
                     throw new Exception("Оператор присоединения with - не поддерживается.");
 
-                default: 
+                default:
+                    PrintError();
                     throw new Exception("Ошибка конструкции <сложный оператор>.");
             }
         }

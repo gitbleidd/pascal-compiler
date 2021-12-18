@@ -11,12 +11,20 @@ namespace PascalCompiler
             var io = new IOModule(@"C:\Users\gitbleidd\Desktop\othres\ФГИМТ\test-without-errors.pas");
             var lexer = new Lexer(io);
 
-            var syntaxAnalyzer = new Syntax.SyntaxAnalyzer(io, lexer);
-            syntaxAnalyzer.Start();
+            try
+            {
+                var syntaxAnalyzer = new Syntax.SyntaxAnalyzer(io, lexer);
+                syntaxAnalyzer.Start();
 
-            io.PrintErrors();
+                io.PrintErrors();
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.Message);
+            }
         }
 
+        // Метод для теста Lexer'a.
         public static void ReadTokens(Lexer lexer)
         {
             Token.LexicalToken token = lexer.GetNextToken();

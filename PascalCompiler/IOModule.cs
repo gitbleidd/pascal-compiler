@@ -15,6 +15,7 @@ namespace PascalCompiler
         private string _line = "";
         private int _lineNum = 0;
         private int _position = -1; // Позиция в текущей строке.
+        public string CompileResPath;
 
         // Словарь с ошибками: key - номер строки с ошибкой. Value - кортеж с самой строкой и списоком ошибок в ней.
         private Dictionary<int, (string errorLine, List<CompilerError> lineErrors)> _errors; 
@@ -63,8 +64,14 @@ namespace PascalCompiler
 
         public string TextSubstr(int start, int length) => _line.Substring(start, length);
 
+        public string CurrentLine { get => _line.Substring(0, _line.Length - 2); }
+        public int CurrentLineNum { get => _lineNum; }
+        public bool HasErrors { get => _errors.Count > 0; }
+
         public IOModule(string filePath)
         {
+            CompileResPath = Path.GetDirectoryName(filePath);
+
             _sr = new StreamReader(filePath);
             _errors = new Dictionary<int, (string, List<CompilerError>)>();
             NextChar(); // Считываем первый символ
