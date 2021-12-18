@@ -743,13 +743,20 @@ namespace PascalCompiler.Syntax
         {
             // Анализ конструкции <цикл с предусловием>.
             // <цикл с предусловием>::= while <выражение> do <оператор>
+            var endBranch = _cg.DefineLabel();
+            var repeatLoopBranch = _cg.DefineLabel();
 
             Accept(SpecialSymbolType.WhileToken);
+            _cg.MarkLabel(repeatLoopBranch); // Проверка условия цикла.
             CType left = Expression();
             AcceptType(left, PascalType.Boolean); // Проверка типа на boolean значение.
+            _cg.TransferControlIfFalse(endBranch); // Если выражение в условии цикла false, то выходим из цикла.
 
             Accept(SpecialSymbolType.DoToken);
             Statement();
+            _cg.TransferControl(repeatLoopBranch); // Выполнили операции в цикле, теперь идем проверять условие цикла.
+
+            _cg.MarkLabel(endBranch); // Конец цикла.
         }
 
         private void IfStatement()
