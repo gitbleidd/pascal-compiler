@@ -1,0 +1,16 @@
+@startuml
+class SourceText {
+    - <<readonly>> _text : string
+    + Length : int <<get>>
+    + SourceText(text:string)
+    - ParseLines(text:string) : void
+    - AddLine(position:int, lineStart:int, lineBreakWidth:int) : void
+    - {static} GetLineBreakLength(text:string, position:int) : int
+    + GetLineIndex(position:int) : int
+    + TextSubstr(textLine:TextLine) : string
+    + TextSubstr(start:int, length:int) : string
+}
+class "List`1"<T> {
+}
+SourceText --> "Lines<TextLine>" "List`1"
+@enduml

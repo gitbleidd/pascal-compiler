@@ -315,7 +315,9 @@ namespace PascalCompiler.Syntax
                     case SpecialSymbolType.LeftRoundBracketToken:
                         ProcedureStatement(identifier);
                         break;
-                    default: break;
+                    default:
+                        PrintError();
+                        throw new Exception("Ожидался оператор присваивания или оператор процедуры");
                 }
             }
             else if (_token is SpecialSymbolToken)

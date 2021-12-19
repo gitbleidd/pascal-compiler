@@ -1,0 +1,29 @@
+@startuml
+class Scope {
+    + Scope()
+    + AddIdentifier(name:string, info:IdentifierInfo) : void
+    + AddType(cType:CType) : CType
+    + ContainsIdent(name:string) : bool
+    + FindIdentifier(name:string) : IdentifierInfo
+}
+enum IdentifierPurpose {
+    Const,
+    Variable,
+    ProgType,
+    Procedure,
+    Function,
+}
+class IdentifierInfo {
+    + IdentifierInfo(purpose:IdentifierPurpose, cType:CType, localBuilder:LocalBuilder)
+    + IdentifierInfo(purpose:IdentifierPurpose, cType:CType)
+}
+class "List`1"<T> {
+}
+class "Dictionary`2"<T1,T2> {
+}
+Scope --> "_typeTable<CType>" "List`1"
+Scope --> "_identifierTable<string,IdentifierInfo>" "Dictionary`2"
+IdentifierInfo --> "Purpose" IdentifierPurpose
+IdentifierInfo --> "Type" CType
+IdentifierInfo --> "LocalBuilder" LocalBuilder
+@enduml

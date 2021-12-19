@@ -1,0 +1,40 @@
+@startuml
+class SyntaxAnalyzer <<partial>> {
+    + SyntaxAnalyzer(io:IOModule, lexer:Lexer)
+    - NextToken() : void
+    - IsFileEnded() : bool
+    - PrintError() : void
+    - Accept(symbolType:SpecialSymbolType) : void
+    - Accept() : void
+    - Cast(left:CType, right:CType) : CType
+    - TryCast(left:CType, right:CType) : CType
+    - AcceptType(cType:CType, type:PascalType) : void
+    - AcceptType(cType:CType, types:PascalType[]) : void
+    + Start() : void
+    - Program() : void
+    - Block() : void
+    - VariablePart() : void
+    - VariableDeclaration() : void
+    - Type() : CType
+    - StatementPart() : void
+    - Statement() : void
+    - SimpleStatement() : void
+    - ProcedureStatement(identifier:IdentifierToken) : void
+    - AssignmentStatement(identifier:IdentifierToken) : void
+    - CheckAddOperation(left:CType, right:CType, operation:SpecialSymbolType) : CType
+    - CheckMultOperation(left:CType, right:CType, operation:SpecialSymbolType) : CType
+    - CheckRelationOperation(left:CType, right:CType, operation:SpecialSymbolType) : BooleanType
+    - Expression() : CType
+    - SimpleExpression() : CType
+    - Term() : CType
+    - Factor() : CType
+    - CompoundStatement() : void
+    - WhileStatement() : void
+    - IfStatement() : void
+}
+SyntaxAnalyzer --> "_io" IOModule
+SyntaxAnalyzer --> "_lexer" Lexer
+SyntaxAnalyzer --> "_token" LexicalToken
+SyntaxAnalyzer --> "_scopeManager" ScopeManager
+SyntaxAnalyzer --> "_cg" CodeGenerator
+@enduml

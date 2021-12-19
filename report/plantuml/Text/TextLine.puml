@@ -1,0 +1,9 @@
+@startuml
+class TextLine {
+    + TextLine(start:int, length:int, lengthWithLineBreak:int)
+    + Start : int <<get>>
+    + Length : int <<get>>
+    + End : int <<get>>
+    + LengthWithLineBreak : int <<get>>
+}
+@enduml

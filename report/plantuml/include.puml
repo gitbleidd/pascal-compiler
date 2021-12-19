@@ -1,0 +1,296 @@
+@startuml
+class IOModule {
+    - _isStreamReaderClosed : bool = false
+    - _line : string = ""
+    - _lineNum : int = 0
+    - _position : int
+    + CompileResPath : string
+    + LookaheadChar : char <<get>>
+    + CurrentChar : char <<get>>
+    + Position : int <<get>>
+    + NextChar() : char
+    + TextSubstr(start:int, length:int) : string
+    + CurrentLine : string <<get>>
+    + CurrentLineNum : int <<get>>
+    + HasErrors : bool <<get>>
+    + IOModule(filePath:string)
+    + AddError(position:int, error:CompilerError) : void
+    + PrintErrors() : void
+}
+enum CompilerError {
+    ConstError= 50,
+    CommentWithoutEnd= 86,
+    OverflowException= 308,
+    StringExceedsLine,
+    LexicalError,
+}
+class "Dictionary`2"<T1,T2> {
+}
+IOModule --> "_sr" StreamReader
+IOModule --> "_errors<int,(string errorLine, List<CompilerError> lineErrors)>" "Dictionary`2"
+IOModule o-> "_errorMessage<CompilerError,string>" "Dictionary`2"
+class Lexer {
+    - _position : int <<get>>
+    - Current : char <<get>>
+    - LookaheadChar : char <<get>>
+    + Lexer(IO:IOModule)
+    - NextPos() : void
+    - ReadUnnecessary() : void
+    - ReadMultilineComment() : void
+    - ReadWhiteSpace() : void
+    + GetNextToken() : LexicalToken
+    - ReadNum() : LexicalToken
+    - ReadIdentifier() : LexicalToken
+}
+class "Dictionary`2"<T1,T2> {
+}
+Lexer --> "_io" IOModule
+Lexer o-> "KeyWords<string,SpecialSymbolType>" "Dictionary`2"
+class Program {
+    {static} Main(args:string[]) : void
+    + {static} ReadTokens(lexer:Lexer) : void
+}
+class CharExtensions <<static>> {
+    + {static} IsAsciiLetter(ch:char) : bool
+    + {static} IsNumber(ch:char) : bool
+}
+class CodeGenerator {
+    - _assemblyPath : string
+    + CodeGenerator(assemblyPath:string)
+    + SaveAssembly() : void
+    + RunAssembly(asmPath:string) : void
+    + DeclareVar(cType:CType) : LocalBuilder
+    + Assign(lb:LocalBuilder) : void
+    + AddValue(value:int) : void
+    + AddValue(value:bool) : void
+    + AddValue(value:double) : void
+    + AddValue(value:string) : void
+    + AddValue(lb:LocalBuilder) : void
+    + NegValue() : void
+    + AddOperation(oper:SpecialSymbolType) : void
+    + ConcatString() : void
+    + PrintConst(lb:LocalBuilder) : void
+    + PrintConst(cType:CType) : void
+    + DefineLabel() : Label
+    + MarkLabel(label:Label) : void
+    + TransferControlIfFalse(label:Label) : void
+    + TransferControl(label:Label) : void
+}
+CodeGenerator --> "_assemblyBuilder" AssemblyBuilder
+CodeGenerator --> "_typeBuilder" TypeBuilder
+CodeGenerator --> "_il" ILGenerator
+CodeGenerator --> "_methodBuilder" MethodBuilder
+abstract class CType {
+    + {abstract} IsCastedTo(type:CType) : bool
+    + CType(pasType:PascalType)
+}
+enum PascalType {
+    Integer,
+    Real,
+    String,
+    Boolean,
+}
+class IntType {
+    + IntType()
+    + <<override>> IsCastedTo(type:CType) : bool
+}
+class RealType {
+    + RealType()
+    + <<override>> IsCastedTo(type:CType) : bool
+}
+class StringType {
+    + StringType()
+    + <<override>> IsCastedTo(type:CType) : bool
+}
+class BooleanType {
+    + BooleanType()
+    + <<override>> IsCastedTo(type:CType) : bool
+}
+CType --> "pasType" PascalType
+CType <|-- IntType
+CType <|-- RealType
+CType <|-- StringType
+CType <|-- BooleanType
+class Scope {
+    + Scope()
+    + AddIdentifier(name:string, info:IdentifierInfo) : void
+    + AddType(cType:CType) : CType
+    + ContainsIdent(name:string) : bool
+    + FindIdentifier(name:string) : IdentifierInfo
+}
+enum IdentifierPurpose {
+    Const,
+    Variable,
+    ProgType,
+    Procedure,
+    Function,
+}
+class IdentifierInfo {
+    + IdentifierInfo(purpose:IdentifierPurpose, cType:CType, localBuilder:LocalBuilder)
+    + IdentifierInfo(purpose:IdentifierPurpose, cType:CType)
+}
+class "List`1"<T> {
+}
+class "Dictionary`2"<T1,T2> {
+}
+Scope --> "_typeTable<CType>" "List`1"
+Scope --> "_identifierTable<string,IdentifierInfo>" "Dictionary`2"
+IdentifierInfo --> "Purpose" IdentifierPurpose
+IdentifierInfo --> "Type" CType
+IdentifierInfo --> "LocalBuilder" LocalBuilder
+class ScopeManager {
+    + ScopeManager()
+    + AddPrgmIdent(name:string, info:IdentifierInfo) : void
+    + IsIdentifierAvailable(identName:string) : bool
+    + GetIdentInfo(name:string) : IdentifierInfo
+}
+class "Stack`1"<T> {
+}
+ScopeManager --> "_scopeTable<Scope>" "Stack`1"
+ScopeManager --> "CurScope" Scope
+class SyntaxAnalyzer <<partial>> {
+    + SyntaxAnalyzer(io:IOModule, lexer:Lexer)
+    - NextToken() : void
+    - IsFileEnded() : bool
+    - PrintError() : void
+    - Accept(symbolType:SpecialSymbolType) : void
+    - Accept() : void
+    - Cast(left:CType, right:CType) : CType
+    - TryCast(left:CType, right:CType) : CType
+    - AcceptType(cType:CType, type:PascalType) : void
+    - AcceptType(cType:CType, types:PascalType[]) : void
+    + Start() : void
+    - Program() : void
+    - Block() : void
+    - VariablePart() : void
+    - VariableDeclaration() : void
+    - Type() : CType
+    - StatementPart() : void
+    - Statement() : void
+    - SimpleStatement() : void
+    - ProcedureStatement(identifier:IdentifierToken) : void
+    - AssignmentStatement(identifier:IdentifierToken) : void
+    - CheckAddOperation(left:CType, right:CType, operation:SpecialSymbolType) : CType
+    - CheckMultOperation(left:CType, right:CType, operation:SpecialSymbolType) : CType
+    - CheckRelationOperation(left:CType, right:CType, operation:SpecialSymbolType) : BooleanType
+    - Expression() : CType
+    - SimpleExpression() : CType
+    - Term() : CType
+    - Factor() : CType
+    - CompoundStatement() : void
+    - WhileStatement() : void
+    - IfStatement() : void
+}
+SyntaxAnalyzer --> "_io" IOModule
+SyntaxAnalyzer --> "_lexer" Lexer
+SyntaxAnalyzer --> "_token" LexicalToken
+SyntaxAnalyzer --> "_scopeManager" ScopeManager
+SyntaxAnalyzer --> "_cg" CodeGenerator
+class SourceText {
+    - <<readonly>> _text : string
+    + Length : int <<get>>
+    + SourceText(text:string)
+    - ParseLines(text:string) : void
+    - AddLine(position:int, lineStart:int, lineBreakWidth:int) : void
+    - {static} GetLineBreakLength(text:string, position:int) : int
+    + GetLineIndex(position:int) : int
+    + TextSubstr(textLine:TextLine) : string
+    + TextSubstr(start:int, length:int) : string
+}
+class "List`1"<T> {
+}
+SourceText --> "Lines<TextLine>" "List`1"
+class TextLine {
+    + TextLine(start:int, length:int, lengthWithLineBreak:int)
+    + Start : int <<get>>
+    + Length : int <<get>>
+    + End : int <<get>>
+    + LengthWithLineBreak : int <<get>>
+}
+abstract class LexicalToken {
+    + Position : int <<get>>
+    + LexicalToken(position:int)
+}
+class IdentifierToken {
+    + Name : string <<get>>
+    + IdentifierToken(position:int, name:string)
+}
+class SpecialSymbolToken {
+    + SpecialSymbolToken(position:int, type:SpecialSymbolType)
+}
+class "ConstToken`1"<T> {
+    + Value : T <<get>>
+    + ConstToken(position:int, value:T)
+}
+class TriviaToken {
+    + TriviaToken(position:int, type:TriviaTokenType)
+}
+LexicalToken <|-- IdentifierToken
+LexicalToken <|-- SpecialSymbolToken
+SpecialSymbolToken --> "Type" SpecialSymbolType
+LexicalToken <|-- "ConstToken`1"
+LexicalToken <|-- TriviaToken
+TriviaToken --> "Type" TriviaTokenType
+enum SpecialSymbolType {
+    LeftRoundBracketToken,
+    RightRoundBracketToken,
+    PlusToken,
+    MinusToken,
+    MultToken,
+    DivisionToken,
+    GreaterToken,
+    LessToken,
+    GreaterOrEqualToken,
+    LessOrEqualToken,
+    EqualToken,
+    NotEqualToken,
+    SemicolonToken,
+    ColonToken,
+    AssignmentToken,
+    LeftSquareBracketToken,
+    RightSquareBracketToken,
+    CommaToken,
+    DotToken,
+    DoubleDotToken,
+    NilToken= 100,
+    NotToken,
+    AndToken,
+    DivToken,
+    PackedToken,
+    ArrayToken,
+    OfToken,
+    FileToken,
+    SetToken,
+    RecordToken,
+    EndToken,
+    CaseToken,
+    OrToken,
+    FunctionToken,
+    VarToken,
+    ProcedureToken,
+    BeginToken,
+    IfToken,
+    ThenToken,
+    ElseToken,
+    WhileToken,
+    DoToken,
+    RepeatToken,
+    UntilToken,
+    ForToken,
+    ToToken,
+    DowntoToken,
+    WithToken,
+    GotoToken,
+    LabelToken,
+    ConstToken,
+    TypeToken,
+    ProgramToken,
+    ModToken,
+    InToken= 134,
+}
+enum TriviaTokenType {
+    EndOfFileToken,
+    BadToken,
+    UnknownSymbol,
+}
+@enduml

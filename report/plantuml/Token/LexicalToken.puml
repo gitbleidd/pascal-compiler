@@ -1,0 +1,26 @@
+@startuml
+abstract class LexicalToken {
+    + Position : int <<get>>
+    + LexicalToken(position:int)
+}
+class IdentifierToken {
+    + Name : string <<get>>
+    + IdentifierToken(position:int, name:string)
+}
+class SpecialSymbolToken {
+    + SpecialSymbolToken(position:int, type:SpecialSymbolType)
+}
+class "ConstToken`1"<T> {
+    + Value : T <<get>>
+    + ConstToken(position:int, value:T)
+}
+class TriviaToken {
+    + TriviaToken(position:int, type:TriviaTokenType)
+}
+LexicalToken <|-- IdentifierToken
+LexicalToken <|-- SpecialSymbolToken
+SpecialSymbolToken --> "Type" SpecialSymbolType
+LexicalToken <|-- "ConstToken`1"
+LexicalToken <|-- TriviaToken
+TriviaToken --> "Type" TriviaTokenType
+@enduml

@@ -1,0 +1,6 @@
+@startuml
+class CharExtensions <<static>> {
+    + {static} IsAsciiLetter(ch:char) : bool
+    + {static} IsNumber(ch:char) : bool
+}
+@enduml

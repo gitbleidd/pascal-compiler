@@ -1,0 +1,33 @@
+@startuml
+abstract class CType {
+    + {abstract} IsCastedTo(type:CType) : bool
+    + CType(pasType:PascalType)
+}
+enum PascalType {
+    Integer,
+    Real,
+    String,
+    Boolean,
+}
+class IntType {
+    + IntType()
+    + <<override>> IsCastedTo(type:CType) : bool
+}
+class RealType {
+    + RealType()
+    + <<override>> IsCastedTo(type:CType) : bool
+}
+class StringType {
+    + StringType()
+    + <<override>> IsCastedTo(type:CType) : bool
+}
+class BooleanType {
+    + BooleanType()
+    + <<override>> IsCastedTo(type:CType) : bool
+}
+CType --> "pasType" PascalType
+CType <|-- IntType
+CType <|-- RealType
+CType <|-- StringType
+CType <|-- BooleanType
+@enduml

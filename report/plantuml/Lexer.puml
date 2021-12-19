@@ -1,0 +1,19 @@
+@startuml
+class Lexer {
+    - _position : int <<get>>
+    - Current : char <<get>>
+    - LookaheadChar : char <<get>>
+    + Lexer(IO:IOModule)
+    - NextPos() : void
+    - ReadUnnecessary() : void
+    - ReadMultilineComment() : void
+    - ReadWhiteSpace() : void
+    + GetNextToken() : LexicalToken
+    - ReadNum() : LexicalToken
+    - ReadIdentifier() : LexicalToken
+}
+class "Dictionary`2"<T1,T2> {
+}
+Lexer --> "_io" IOModule
+Lexer o-> "KeyWords<string,SpecialSymbolType>" "Dictionary`2"
+@enduml

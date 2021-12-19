@@ -1,0 +1,12 @@
+@startuml
+class ScopeManager {
+    + ScopeManager()
+    + AddPrgmIdent(name:string, info:IdentifierInfo) : void
+    + IsIdentifierAvailable(identName:string) : bool
+    + GetIdentInfo(name:string) : IdentifierInfo
+}
+class "Stack`1"<T> {
+}
+ScopeManager --> "_scopeTable<Scope>" "Stack`1"
+ScopeManager --> "CurScope" Scope
+@enduml

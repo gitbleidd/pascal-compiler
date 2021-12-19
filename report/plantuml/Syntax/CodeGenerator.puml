@@ -1,0 +1,28 @@
+@startuml
+class CodeGenerator {
+    - _assemblyPath : string
+    + CodeGenerator(assemblyPath:string)
+    + SaveAssembly() : void
+    + RunAssembly(asmPath:string) : void
+    + DeclareVar(cType:CType) : LocalBuilder
+    + Assign(lb:LocalBuilder) : void
+    + AddValue(value:int) : void
+    + AddValue(value:bool) : void
+    + AddValue(value:double) : void
+    + AddValue(value:string) : void
+    + AddValue(lb:LocalBuilder) : void
+    + NegValue() : void
+    + AddOperation(oper:SpecialSymbolType) : void
+    + ConcatString() : void
+    + PrintConst(lb:LocalBuilder) : void
+    + PrintConst(cType:CType) : void
+    + DefineLabel() : Label
+    + MarkLabel(label:Label) : void
+    + TransferControlIfFalse(label:Label) : void
+    + TransferControl(label:Label) : void
+}
+CodeGenerator --> "_assemblyBuilder" AssemblyBuilder
+CodeGenerator --> "_typeBuilder" TypeBuilder
+CodeGenerator --> "_il" ILGenerator
+CodeGenerator --> "_methodBuilder" MethodBuilder
+@enduml

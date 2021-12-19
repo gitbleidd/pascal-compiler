@@ -1,0 +1,32 @@
+@startuml
+class IOModule {
+    - _isStreamReaderClosed : bool = false
+    - _line : string = ""
+    - _lineNum : int = 0
+    - _position : int
+    + CompileResPath : string
+    + LookaheadChar : char <<get>>
+    + CurrentChar : char <<get>>
+    + Position : int <<get>>
+    + NextChar() : char
+    + TextSubstr(start:int, length:int) : string
+    + CurrentLine : string <<get>>
+    + CurrentLineNum : int <<get>>
+    + HasErrors : bool <<get>>
+    + IOModule(filePath:string)
+    + AddError(position:int, error:CompilerError) : void
+    + PrintErrors() : void
+}
+enum CompilerError {
+    ConstError= 50,
+    CommentWithoutEnd= 86,
+    OverflowException= 308,
+    StringExceedsLine,
+    LexicalError,
+}
+class "Dictionary`2"<T1,T2> {
+}
+IOModule --> "_sr" StreamReader
+IOModule --> "_errors<int,(string errorLine, List<CompilerError> lineErrors)>" "Dictionary`2"
+IOModule o-> "_errorMessage<CompilerError,string>" "Dictionary`2"
+@enduml
